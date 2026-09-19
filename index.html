@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Supermercado</title>
+    <meta name="theme-color" content="#FF6061" />
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <!-- Pantalla de login / registro -->
+    <div id="pantalla-login" class="pantalla-login">
+      <div class="login-card">
+        <h1 class="login-titulo">🛒 Supermercado</h1>
+        <p class="texto-ayuda" id="login-subtitulo">Iniciá sesión para continuar</p>
+        <div id="login-mensaje" class="mensaje-box"></div>
+
+        <form id="form-login" class="form-vertical">
+          <label>
+            Email
+            <input type="email" id="login-email" required autocomplete="email" />
+          </label>
+          <label>
+            Contraseña
+            <input type="password" id="login-password" required autocomplete="current-password" />
+          </label>
+          <button type="submit" class="btn btn--primario btn--ancho">Iniciar sesión</button>
+        </form>
+        <button id="btn-mostrar-registro" class="btn btn--link" type="button">
+          ¿No tenés cuenta? Creá una
+        </button>
+
+        <form id="form-registro" class="form-vertical oculto">
+          <label>
+            Email
+            <input type="email" id="registro-email" required autocomplete="email" />
+          </label>
+          <label>
+            Contraseña (mínimo 6 caracteres)
+            <input type="password" id="registro-password" required autocomplete="new-password" minlength="6" />
+          </label>
+          <button type="submit" class="btn btn--primario btn--ancho">Crear cuenta</button>
+        </form>
+        <button id="btn-mostrar-login" class="btn btn--link oculto" type="button">
+          Ya tengo cuenta, iniciar sesión
+        </button>
+      </div>
+    </div>
+
+    <!-- Pantalla principal de la app -->
+    <div id="pantalla-app" class="pantalla-app oculto">
+      <header class="header-app">
+        <h1>🛒 Supermercado</h1>
+        <button id="btn-logout" class="btn btn--secundario btn--chico" type="button">Cerrar sesión</button>
+      </header>
+
+      <nav class="tabs">
+        <button id="btn-tab-lista" class="tab-btn tab-btn--activo" type="button">Lista</button>
+        <button id="btn-tab-configuracion" class="tab-btn" type="button">Configuración</button>
+      </nav>
+
+      <section id="tab-lista" class="tab-panel">
+        <nav class="subtabs">
+          <button id="btn-subtab-presencial" class="subtab-btn subtab-btn--activo" type="button">
+            Presencial
+          </button>
+          <button id="btn-subtab-online" class="subtab-btn" type="button">Online</button>
+        </nav>
+        <div id="lista-presencial" class="subtab-panel"></div>
+        <div id="lista-online" class="subtab-panel oculto"></div>
+      </section>
+
+      <section id="tab-configuracion" class="tab-panel oculto">
+        <nav class="subtabs">
+          <button id="btn-subtab-productos" class="subtab-btn subtab-btn--activo" type="button">
+            Productos
+          </button>
+          <button id="btn-subtab-supermercados" class="subtab-btn" type="button">Supermercados</button>
+        </nav>
+        <div id="config-productos" class="subtab-panel"></div>
+        <div id="config-supermercados" class="subtab-panel oculto"></div>
+      </section>
+    </div>
+
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>
