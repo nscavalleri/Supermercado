@@ -4,7 +4,7 @@
 // estado "comprado" guardado: cuando lo comprás, tildás el check y el item
 // se elimina de la lista.
 import { el, clearNode, showMensaje, crearInputConAutocompletado } from "./ui.js";
-import { fetchProductos, buscarOCrearProducto } from "./db.js";
+import { fetchProductos, buscarOCrearProducto, agruparPorTipo } from "./db.js";
 
 // config: { fetchItems, agregarItem(productoId), eliminarItem(id) }
 export function crearListaComprasView(config) {
@@ -52,9 +52,14 @@ export function crearListaComprasView(config) {
           listaBox.appendChild(el("p", { class: "texto-ayuda" }, "La lista está vacía. Agregá productos arriba."));
           return;
         }
-        const ul = el("ul", { class: "item-lista" });
-        items.forEach((item) => ul.appendChild(renderFila(item)));
-        listaBox.appendChild(ul);
+        // Se muestra agrupada por tipo de producto (orden alfabético, con
+        // "Sin clasificar" siempre al final) y alfabéticamente dentro de cada tipo.
+        agruparPorTipo(items).forEach(({ tipoNombre, items: itemsTipo }) => {
+          listaBox.appendChild(el("h3", { class: "grupo-tipo__titulo" }, tipoNombre));
+          const ul = el("ul", { class: "item-lista" });
+          itemsTipo.forEach((item) => ul.appendChild(renderFila(item)));
+          listaBox.appendChild(ul);
+        });
       } catch (err) {
         showMensaje(mensajeBox, "No se pudo cargar la lista: " + err.message);
       }
