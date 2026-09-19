@@ -174,7 +174,8 @@ h3 {
 
 input[type="text"],
 input[type="email"],
-input[type="password"] {
+input[type="password"],
+select {
   padding: 10px 12px;
   border-radius: 10px;
   border: 2px solid var(--borde);
@@ -185,7 +186,8 @@ input[type="password"] {
   color: var(--texto);
 }
 
-input:focus {
+input:focus,
+select:focus {
   outline: none;
   border-color: var(--celeste);
 }
@@ -287,6 +289,12 @@ input:focus {
   min-width: 180px;
 }
 
+.form-agregar select {
+  flex: 1;
+  min-width: 160px;
+  max-width: 220px;
+}
+
 .autocomplete {
   position: relative;
   flex: 1;
@@ -351,10 +359,25 @@ input:focus {
   min-width: 140px;
 }
 
+.abm-lista__fila select {
+  flex: 1;
+  min-width: 140px;
+  max-width: 220px;
+}
+
 .abm-lista__nombre {
   flex: 1;
   font-weight: 500;
   min-width: 100px;
+}
+
+.abm-lista__tipo {
+  color: var(--texto-suave);
+  font-size: 0.8rem;
+  background: var(--fondo);
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
 }
 
 /* ---------- Listas de compra (Online / Presencial) ---------- */
@@ -403,6 +426,21 @@ input:focus {
   margin-top: 0;
 }
 
+/* Subtítulo de agrupado por tipo de producto, dentro de una lista o de cada
+   grupo de supermercado en "Todos". */
+.grupo-tipo__titulo {
+  color: var(--texto-suave);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 16px 0 8px 0;
+}
+
+.grupo-tipo__titulo:first-child {
+  margin-top: 0;
+}
+
 /* ---------- Responsive ---------- */
 
 @media (max-width: 480px) {
@@ -418,5 +456,9 @@ input:focus {
 
   .tab-panel {
     padding: 4px 10px 20px 10px;
+  }
+
+  .login-card {
+    padding: 24px 18px;
   }
 }
