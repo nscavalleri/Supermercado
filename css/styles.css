@@ -1,0 +1,422 @@
+:root {
+  --fucsia: #ff6061;
+  --fucsia-oscuro: #e14748;
+  --celeste: #04c6da;
+  --celeste-oscuro: #03a3b3;
+  --peligro: #e0405a;
+  --peligro-oscuro: #c22f47;
+  --fondo: #f7f7fb;
+  --tarjeta: #ffffff;
+  --texto: #262633;
+  --texto-suave: #6b6b7b;
+  --borde: #e4e4ee;
+  --radio: 12px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--fondo);
+  color: var(--texto);
+}
+
+h1,
+h2,
+h3 {
+  margin: 0 0 12px 0;
+}
+
+.oculto {
+  display: none !important;
+}
+
+.texto-ayuda {
+  color: var(--texto-suave);
+  font-size: 0.95rem;
+}
+
+/* ---------- Mensajes ---------- */
+
+.mensaje-box:empty {
+  display: none;
+}
+
+.mensaje {
+  padding: 10px 14px;
+  border-radius: var(--radio);
+  margin-bottom: 12px;
+  font-size: 0.95rem;
+}
+
+.mensaje--error {
+  background: #fde2e5;
+  color: var(--peligro-oscuro);
+}
+
+.mensaje--info {
+  background: #e0f9fc;
+  color: var(--celeste-oscuro);
+}
+
+/* ---------- Botones ---------- */
+
+.btn {
+  border: none;
+  border-radius: var(--radio);
+  padding: 10px 16px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 40px;
+  transition: opacity 0.15s ease, transform 0.05s ease;
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.btn--primario {
+  background: var(--fucsia);
+  color: white;
+}
+
+.btn--primario:hover {
+  background: var(--fucsia-oscuro);
+}
+
+.btn--secundario {
+  background: white;
+  color: var(--celeste-oscuro);
+  border: 2px solid var(--celeste);
+}
+
+.btn--secundario:hover {
+  background: #e0f9fc;
+}
+
+.btn--peligro {
+  background: white;
+  color: var(--peligro);
+  border: 2px solid var(--peligro);
+}
+
+.btn--peligro:hover {
+  background: var(--peligro);
+  color: white;
+}
+
+.btn--chico {
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  min-height: 32px;
+}
+
+.btn--ancho {
+  width: 100%;
+}
+
+.btn--link {
+  background: none;
+  color: var(--celeste-oscuro);
+  text-decoration: underline;
+  padding: 8px 0;
+  min-height: auto;
+  width: 100%;
+}
+
+/* ---------- Login ---------- */
+
+.pantalla-login {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: linear-gradient(160deg, var(--fucsia) 0%, var(--celeste) 100%);
+}
+
+.login-card {
+  background: var(--tarjeta);
+  border-radius: 20px;
+  padding: 32px 24px;
+  width: 100%;
+  max-width: 380px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+.login-titulo {
+  text-align: center;
+  font-size: 1.6rem;
+}
+
+#login-subtitulo {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.form-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.form-vertical label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.9rem;
+  color: var(--texto-suave);
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"] {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 2px solid var(--borde);
+  font-size: 1rem;
+  min-height: 42px;
+  width: 100%;
+  background: white;
+  color: var(--texto);
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--celeste);
+}
+
+/* ---------- App principal ---------- */
+
+.pantalla-app {
+  min-height: 100dvh;
+  padding-bottom: 40px;
+}
+
+.header-app {
+  background: var(--fucsia);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.header-app h1 {
+  font-size: 1.25rem;
+  margin: 0;
+}
+
+.header-app .btn--secundario {
+  background: white;
+}
+
+/* ---------- Tabs y subtabs ---------- */
+
+.tabs,
+.subtabs {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px 0 16px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.subtabs {
+  padding-top: 14px;
+  padding-bottom: 6px;
+}
+
+.tab-btn,
+.subtab-btn {
+  border: none;
+  background: white;
+  color: var(--texto-suave);
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  border: 2px solid var(--borde);
+}
+
+.tab-btn--activo {
+  background: var(--fucsia);
+  border-color: var(--fucsia);
+  color: white;
+}
+
+.subtab-btn--activo {
+  background: var(--celeste);
+  border-color: var(--celeste);
+  color: white;
+}
+
+.tab-panel {
+  padding: 4px 16px 24px 16px;
+}
+
+.subtab-panel {
+  background: var(--tarjeta);
+  border-radius: var(--radio);
+  padding: 16px;
+  margin-top: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+}
+
+/* ---------- Formulario de agregar (autocompletado / ABM) ---------- */
+
+.form-agregar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.form-agregar input {
+  flex: 1;
+  min-width: 180px;
+}
+
+.autocomplete {
+  position: relative;
+  flex: 1;
+  min-width: 180px;
+}
+
+.autocomplete__input {
+  width: 100%;
+}
+
+.autocomplete__lista {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: white;
+  border: 2px solid var(--borde);
+  border-radius: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 20;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+.autocomplete__item {
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.autocomplete__item:hover,
+.autocomplete__item--activo {
+  background: #e0f9fc;
+}
+
+/* ---------- Listas ABM (Productos / Supermercados) ---------- */
+
+.abm-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.abm-lista__fila {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  flex-wrap: wrap;
+}
+
+.abm-lista__fila input[type="text"] {
+  flex: 1;
+  min-width: 140px;
+}
+
+.abm-lista__nombre {
+  flex: 1;
+  font-weight: 500;
+  min-width: 100px;
+}
+
+/* ---------- Listas de compra (Online / Presencial) ---------- */
+
+.item-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.item-lista__fila {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  flex-wrap: wrap;
+}
+
+.item-lista__fila--comprado {
+  opacity: 0.5;
+}
+
+.item-lista__fila--comprado .item-lista__nombre {
+  text-decoration: line-through;
+}
+
+.item-lista__nombre {
+  flex: 1;
+  min-width: 100px;
+  font-weight: 500;
+}
+
+.grupos-todos__titulo {
+  color: var(--fucsia-oscuro);
+  margin-top: 20px;
+  border-bottom: 2px solid var(--celeste);
+  padding-bottom: 6px;
+}
+
+.grupos-todos__titulo:first-child {
+  margin-top: 0;
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 480px) {
+  .header-app h1 {
+    font-size: 1.05rem;
+  }
+
+  .tab-btn,
+  .subtab-btn {
+    padding: 8px 14px;
+    font-size: 0.85rem;
+  }
+
+  .tab-panel {
+    padding: 4px 10px 20px 10px;
+  }
+}
