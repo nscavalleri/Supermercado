@@ -1,6 +1,12 @@
 // Punto de entrada de la app: maneja login/logout y la navegación entre
 // solapas y subsolapas, delegando el contenido de cada pantalla a su módulo.
-import { getSession, onAuthStateChange, signIn, signUp, signOut } from "./auth.js";
+import {
+  getSession,
+  onAuthStateChange,
+  ingresar,
+  signOut,
+  getUsuarioActual,
+} from "./auth.js";
 import { showMensaje, clearNode } from "./ui.js";
 import { renderProductos } from "./productos.js";
 import { renderSupermercados } from "./supermercados.js";
@@ -11,65 +17,24 @@ import { renderPresencial } from "./listaPresencial.js";
 const pantallaLogin = document.getElementById("pantalla-login");
 const pantallaApp = document.getElementById("pantalla-app");
 
-/* ---------- Login / registro ---------- */
+/* ---------- Ingreso (usuario + código) ---------- */
 
 const loginMensaje = document.getElementById("login-mensaje");
 const formLogin = document.getElementById("form-login");
-const formRegistro = document.getElementById("form-registro");
-const btnMostrarRegistro = document.getElementById("btn-mostrar-registro");
-const btnMostrarLogin = document.getElementById("btn-mostrar-login");
-const loginSubtitulo = document.getElementById("login-subtitulo");
-
-function mostrarVistaRegistro() {
-  formLogin.classList.add("oculto");
-  btnMostrarRegistro.classList.add("oculto");
-  formRegistro.classList.remove("oculto");
-  btnMostrarLogin.classList.remove("oculto");
-  loginSubtitulo.textContent = "Creá tu cuenta para empezar";
-  clearNode(loginMensaje);
-}
-
-function mostrarVistaLogin() {
-  formRegistro.classList.add("oculto");
-  btnMostrarLogin.classList.add("oculto");
-  formLogin.classList.remove("oculto");
-  btnMostrarRegistro.classList.remove("oculto");
-  loginSubtitulo.textContent = "Iniciá sesión para continuar";
-  clearNode(loginMensaje);
-}
-
-btnMostrarRegistro.addEventListener("click", mostrarVistaRegistro);
-btnMostrarLogin.addEventListener("click", mostrarVistaLogin);
+const loginUsuario = document.getElementById("login-usuario");
+const loginCodigo = document.getElementById("login-codigo");
+const headerUsuario = document.getElementById("header-usuario");
 
 formLogin.addEventListener("submit", async (e) => {
   e.preventDefault();
   clearNode(loginMensaje);
-  const email = document.getElementById("login-email").value.trim();
-  const password = document.getElementById("login-password").value;
+  const nombre = loginUsuario.value;
+  const codigo = loginCodigo.value.trim();
   try {
-    await signIn(email, password);
+    await ingresar(nombre, codigo);
+    mostrarApp();
   } catch (err) {
-    showMensaje(loginMensaje, "No se pudo iniciar sesión: " + err.message);
-  }
-});
-
-formRegistro.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  clearNode(loginMensaje);
-  const email = document.getElementById("registro-email").value.trim();
-  const password = document.getElementById("registro-password").value;
-  try {
-    const { session } = await signUp(email, password);
-    if (!session) {
-      showMensaje(
-        loginMensaje,
-        "Cuenta creada. Revisá tu email para confirmarla y después iniciá sesión.",
-        "info"
-      );
-      btnMostrarLogin.click();
-    }
-  } catch (err) {
-    showMensaje(loginMensaje, "No se pudo crear la cuenta: " + err.message);
+    showMensaje(loginMensaje, err.message);
   }
 });
 
@@ -86,6 +51,7 @@ document.getElementById("btn-logout").addEventListener("click", async () => {
 function mostrarApp() {
   pantallaLogin.classList.add("oculto");
   pantallaApp.classList.remove("oculto");
+  headerUsuario.textContent = getUsuarioActual() || "";
   activarTab("lista");
 }
 
@@ -93,19 +59,20 @@ function mostrarLogin() {
   pantallaApp.classList.add("oculto");
   pantallaLogin.classList.remove("oculto");
   formLogin.reset();
-  formRegistro.reset();
-  mostrarVistaLogin();
+  clearNode(loginMensaje);
 }
 
 (async function iniciar() {
   const session = await getSession();
-  if (session) mostrarApp();
+  const usuario = getUsuarioActual();
+  if (session && usuario) mostrarApp();
   else mostrarLogin();
 })();
 
 onAuthStateChange((session) => {
-  if (session) mostrarApp();
-  else mostrarLogin();
+  const usuario = getUsuarioActual();
+  if (session && usuario) mostrarApp();
+  else if (!session) mostrarLogin();
 });
 
 /* ---------- Navegación: solapas Lista / Configuración ---------- */
