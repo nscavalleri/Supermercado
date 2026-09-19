@@ -220,6 +220,17 @@ select:focus {
   background: white;
 }
 
+.header-app__acciones {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.header-app__usuario {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
 /* ---------- Tabs y subtabs ---------- */
 
 .tabs,
