@@ -8,6 +8,7 @@ import {
   fetchListaPresencial,
   agregarItemPresencial,
   eliminarItemPresencial,
+  agruparPorTipo,
 } from "./db.js";
 
 const TODOS = "__todos__";
@@ -112,10 +113,15 @@ async function renderTodos(container) {
     });
 
     for (const [nombreSuper, itemsSuper] of porSupermercado) {
-      const ul = el("ul", { class: "item-lista" });
-      itemsSuper.forEach((item) => ul.appendChild(renderFilaSoloLectura(item, cargar, mensajeBox)));
       grupos.appendChild(el("h3", { class: "grupos-todos__titulo" }, nombreSuper));
-      grupos.appendChild(ul);
+      // Dentro de cada supermercado, se agrupa además por tipo de producto
+      // (orden alfabético, "Sin clasificar" al final) y alfabéticamente dentro de cada tipo.
+      agruparPorTipo(itemsSuper).forEach(({ tipoNombre, items: itemsTipo }) => {
+        grupos.appendChild(el("h4", { class: "grupo-tipo__titulo" }, tipoNombre));
+        const ul = el("ul", { class: "item-lista" });
+        itemsTipo.forEach((item) => ul.appendChild(renderFilaSoloLectura(item, cargar, mensajeBox)));
+        grupos.appendChild(ul);
+      });
     }
   }
 
