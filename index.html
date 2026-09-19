@@ -8,42 +8,34 @@
     <link rel="stylesheet" href="css/styles.css" />
   </head>
   <body>
-    <!-- Pantalla de login / registro -->
+    <!-- Pantalla de ingreso -->
     <div id="pantalla-login" class="pantalla-login">
       <div class="login-card">
         <h1 class="login-titulo">🛒 Supermercado</h1>
-        <p class="texto-ayuda" id="login-subtitulo">Iniciá sesión para continuar</p>
+        <p class="texto-ayuda" id="login-subtitulo">Elegí tu nombre e ingresá el código</p>
         <div id="login-mensaje" class="mensaje-box"></div>
 
         <form id="form-login" class="form-vertical">
           <label>
-            Email
-            <input type="email" id="login-email" required autocomplete="email" />
+            Usuario
+            <select id="login-usuario" required>
+              <option value="" disabled selected>Elegí tu nombre</option>
+              <option value="Nadia">Nadia</option>
+              <option value="Leo">Leo</option>
+            </select>
           </label>
           <label>
-            Contraseña
-            <input type="password" id="login-password" required autocomplete="current-password" />
+            Código
+            <input
+              type="password"
+              id="login-codigo"
+              required
+              inputmode="numeric"
+              autocomplete="off"
+            />
           </label>
-          <button type="submit" class="btn btn--primario btn--ancho">Iniciar sesión</button>
+          <button type="submit" class="btn btn--primario btn--ancho">Ingresar</button>
         </form>
-        <button id="btn-mostrar-registro" class="btn btn--link" type="button">
-          ¿No tenés cuenta? Creá una
-        </button>
-
-        <form id="form-registro" class="form-vertical oculto">
-          <label>
-            Email
-            <input type="email" id="registro-email" required autocomplete="email" />
-          </label>
-          <label>
-            Contraseña (mínimo 6 caracteres)
-            <input type="password" id="registro-password" required autocomplete="new-password" minlength="6" />
-          </label>
-          <button type="submit" class="btn btn--primario btn--ancho">Crear cuenta</button>
-        </form>
-        <button id="btn-mostrar-login" class="btn btn--link oculto" type="button">
-          Ya tengo cuenta, iniciar sesión
-        </button>
       </div>
     </div>
 
@@ -51,7 +43,10 @@
     <div id="pantalla-app" class="pantalla-app oculto">
       <header class="header-app">
         <h1>🛒 Supermercado</h1>
-        <button id="btn-logout" class="btn btn--secundario btn--chico" type="button">Cerrar sesión</button>
+        <div class="header-app__acciones">
+          <span id="header-usuario" class="header-app__usuario"></span>
+          <button id="btn-logout" class="btn btn--secundario btn--chico" type="button">Cerrar sesión</button>
+        </div>
       </header>
 
       <nav class="tabs">
