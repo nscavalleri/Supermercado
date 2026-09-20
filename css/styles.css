@@ -425,6 +425,91 @@ select:focus {
   min-width: 100px;
 }
 
+/* Botones con ícono (Editar / Eliminar / Guardar / Cancelar en Configuración):
+   ocupan mucho menos que los botones con texto, sobre todo en mobile. */
+.btn-icono {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  border: 2px solid var(--borde);
+  border-radius: 10px;
+  color: var(--texto-suave);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.05s ease;
+}
+
+.btn-icono svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.btn-icono:active {
+  transform: scale(0.94);
+}
+
+.btn-icono:focus-visible {
+  outline: 2px solid var(--celeste);
+  outline-offset: 2px;
+}
+
+.btn-icono--editar {
+  color: var(--celeste-oscuro);
+}
+
+.btn-icono--editar:hover {
+  background: #e4f9fc;
+  border-color: var(--celeste);
+}
+
+.btn-icono--eliminar {
+  color: var(--peligro);
+}
+
+.btn-icono--eliminar:hover {
+  background: #fde2e5;
+  border-color: var(--peligro);
+}
+
+.btn-icono--guardar {
+  background: var(--celeste);
+  border-color: var(--celeste);
+  color: white;
+}
+
+.btn-icono--guardar:hover {
+  background: var(--celeste-oscuro);
+  border-color: var(--celeste-oscuro);
+}
+
+.btn-icono--guardar svg {
+  stroke-width: 2.4;
+}
+
+.btn-icono--cancelar:hover {
+  background: var(--fondo);
+  border-color: var(--texto-suave);
+  color: var(--texto);
+}
+
+/* Los botones de acción van juntos: si la fila no entra, bajan los dos a la
+   vez en vez de partirse uno arriba y otro abajo. */
+.abm-lista__acciones {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
 .abm-lista__tipo {
   color: var(--texto-suave);
   font-size: 0.8rem;
