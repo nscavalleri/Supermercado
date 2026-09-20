@@ -1,7 +1,7 @@
 // Pantalla Configuración > Tipos de producto: ABM (alta, baja, modificación) del
 // catálogo de tipos de producto. Se usan para clasificar los productos y para
 // ordenar las listas de compra (primero por tipo, después alfabéticamente).
-import { el, clearNode, showMensaje, confirmar } from "./ui.js";
+import { el, clearNode, showMensaje, confirmar, botonIcono } from "./ui.js";
 import {
   fetchTiposProducto,
   crearTipoProducto,
@@ -50,17 +50,18 @@ export async function renderTiposProducto(container) {
   function renderFila(tipo) {
     const nombreSpan = el("span", { class: "abm-lista__nombre" }, tipo.nombre);
 
-    const botonEditar = el("button", { class: "btn btn--secundario btn--chico", type: "button" }, "Editar");
-    const botonEliminar = el("button", { class: "btn btn--peligro btn--chico", type: "button" }, "Eliminar");
+    const botonEditar = botonIcono("editar");
+    const botonEliminar = botonIcono("eliminar");
 
-    const li = el("li", { class: "abm-lista__fila" }, [nombreSpan, botonEditar, botonEliminar]);
+    const acciones = el("div", { class: "abm-lista__acciones" }, [botonEditar, botonEliminar]);
+    const li = el("li", { class: "abm-lista__fila" }, [nombreSpan, acciones]);
 
     botonEditar.addEventListener("click", () => {
       const inputEdit = el("input", { type: "text", value: tipo.nombre });
-      const guardar = el("button", { class: "btn btn--primario btn--chico", type: "button" }, "Guardar");
-      const cancelar = el("button", { class: "btn btn--secundario btn--chico", type: "button" }, "Cancelar");
+      const guardar = botonIcono("guardar");
+      const cancelar = botonIcono("cancelar");
       clearNode(li);
-      li.append(inputEdit, guardar, cancelar);
+      li.append(inputEdit, el("div", { class: "abm-lista__acciones" }, [guardar, cancelar]));
       inputEdit.focus();
 
       guardar.addEventListener("click", async () => {

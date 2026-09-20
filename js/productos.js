@@ -1,5 +1,5 @@
 // Pantalla Configuración > Productos: ABM (alta, baja, modificación) del catálogo de productos.
-import { el, clearNode, showMensaje, confirmar } from "./ui.js";
+import { el, clearNode, showMensaje, confirmar, botonIcono } from "./ui.js";
 import { fetchProductos, crearProducto, actualizarProducto, eliminarProducto, fetchTiposProducto } from "./db.js";
 
 const SIN_TIPO_VALOR = "";
@@ -108,18 +108,19 @@ export async function renderProductos(container) {
       producto.tipo_producto ? producto.tipo_producto.nombre : "Sin tipo"
     );
 
-    const botonEditar = el("button", { class: "btn btn--secundario btn--chico", type: "button" }, "Editar");
-    const botonEliminar = el("button", { class: "btn btn--peligro btn--chico", type: "button" }, "Eliminar");
+    const botonEditar = botonIcono("editar");
+    const botonEliminar = botonIcono("eliminar");
 
-    const li = el("li", { class: "abm-lista__fila" }, [nombreSpan, tipoSpan, botonEditar, botonEliminar]);
+    const acciones = el("div", { class: "abm-lista__acciones" }, [botonEditar, botonEliminar]);
+    const li = el("li", { class: "abm-lista__fila" }, [nombreSpan, tipoSpan, acciones]);
 
     botonEditar.addEventListener("click", () => {
       const inputEdit = el("input", { type: "text", value: producto.nombre });
       const selectEditTipo = crearSelectTipo(producto.tipo_producto_id);
-      const guardar = el("button", { class: "btn btn--primario btn--chico", type: "button" }, "Guardar");
-      const cancelar = el("button", { class: "btn btn--secundario btn--chico", type: "button" }, "Cancelar");
+      const guardar = botonIcono("guardar");
+      const cancelar = botonIcono("cancelar");
       clearNode(li);
-      li.append(inputEdit, selectEditTipo, guardar, cancelar);
+      li.append(inputEdit, selectEditTipo, el("div", { class: "abm-lista__acciones" }, [guardar, cancelar]));
       inputEdit.focus();
 
       guardar.addEventListener("click", async () => {

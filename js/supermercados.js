@@ -1,5 +1,5 @@
 // Pantalla Configuración > Supermercados: ABM (alta, baja, modificación) del catálogo de supermercados.
-import { el, clearNode, showMensaje, confirmar } from "./ui.js";
+import { el, clearNode, showMensaje, confirmar, botonIcono } from "./ui.js";
 import {
   fetchSupermercados,
   crearSupermercado,
@@ -46,16 +46,17 @@ export async function renderSupermercados(container, onCambio) {
 
   function renderFila(supermercado) {
     const nombreSpan = el("span", { class: "abm-lista__nombre" }, supermercado.nombre);
-    const botonEditar = el("button", { class: "btn btn--secundario btn--chico", type: "button" }, "Editar");
-    const botonEliminar = el("button", { class: "btn btn--peligro btn--chico", type: "button" }, "Eliminar");
-    const li = el("li", { class: "abm-lista__fila" }, [nombreSpan, botonEditar, botonEliminar]);
+    const botonEditar = botonIcono("editar");
+    const botonEliminar = botonIcono("eliminar");
+    const acciones = el("div", { class: "abm-lista__acciones" }, [botonEditar, botonEliminar]);
+    const li = el("li", { class: "abm-lista__fila" }, [nombreSpan, acciones]);
 
     botonEditar.addEventListener("click", () => {
       const inputEdit = el("input", { type: "text", value: supermercado.nombre });
-      const guardar = el("button", { class: "btn btn--primario btn--chico", type: "button" }, "Guardar");
-      const cancelar = el("button", { class: "btn btn--secundario btn--chico", type: "button" }, "Cancelar");
+      const guardar = botonIcono("guardar");
+      const cancelar = botonIcono("cancelar");
       clearNode(li);
-      li.append(inputEdit, guardar, cancelar);
+      li.append(inputEdit, el("div", { class: "abm-lista__acciones" }, [guardar, cancelar]));
       inputEdit.focus();
 
       guardar.addEventListener("click", async () => {
