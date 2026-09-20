@@ -11,6 +11,9 @@
   --texto-suave: #6b6b7b;
   --borde: #e4e4ee;
   --radio: 12px;
+  /* Ancho máximo del contenido: en pantallas grandes la app queda centrada
+     en vez de estirarse de punta a punta. */
+  --ancho-max: 720px;
 }
 
 * {
@@ -202,13 +205,20 @@ select:focus {
 .header-app {
   background: var(--fucsia);
   color: white;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   padding: 16px 20px;
   position: sticky;
   top: 0;
   z-index: 10;
+}
+
+/* La barra de color ocupa todo el ancho; el contenido se centra igual que el resto. */
+.header-app__inner {
+  max-width: var(--ancho-max);
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .header-app h1 {
@@ -240,6 +250,13 @@ select:focus {
   padding: 12px 16px 0 16px;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+}
+
+/* Las solapas principales y los paneles se centran con el mismo ancho máximo. */
+.tabs {
+  max-width: var(--ancho-max);
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .subtabs {
@@ -276,6 +293,9 @@ select:focus {
 
 .tab-panel {
   padding: 4px 16px 24px 16px;
+  max-width: var(--ancho-max);
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .subtab-panel {
@@ -304,6 +324,28 @@ select:focus {
   flex: 1;
   min-width: 160px;
   max-width: 220px;
+}
+
+/* ---------- Filtro por tipo (Configuración > Productos) ---------- */
+
+.form-filtro {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.form-filtro__label {
+  font-size: 0.9rem;
+  color: var(--texto-suave);
+  white-space: nowrap;
+}
+
+.form-filtro select {
+  flex: 1;
+  min-width: 160px;
+  max-width: 260px;
 }
 
 .autocomplete {
