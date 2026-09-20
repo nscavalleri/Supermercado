@@ -41,11 +41,15 @@
 
     <!-- Pantalla principal de la app -->
     <div id="pantalla-app" class="pantalla-app oculto">
+      <!-- La barra rosa ocupa todo el ancho, pero su contenido se centra con
+           el mismo ancho máximo que el resto de la app (.header-app__inner). -->
       <header class="header-app">
-        <h1>🛒 Supermercado</h1>
-        <div class="header-app__acciones">
-          <span id="header-usuario" class="header-app__usuario"></span>
-          <button id="btn-logout" class="btn btn--secundario btn--chico" type="button">Cerrar sesión</button>
+        <div class="header-app__inner">
+          <h1>🛒 Supermercado</h1>
+          <div class="header-app__acciones">
+            <span id="header-usuario" class="header-app__usuario"></span>
+            <button id="btn-logout" class="btn btn--secundario btn--chico" type="button">Cerrar sesión</button>
+          </div>
         </div>
       </header>
 
