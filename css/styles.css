@@ -243,13 +243,14 @@ select:focus {
 
 /* ---------- Tabs y subtabs ---------- */
 
+/* Las solapas se acomodan en varias filas en vez de scrollear horizontalmente,
+   así siempre se ven todas (importante en mobile y en Configuración). */
 .tabs,
 .subtabs {
   display: flex;
   gap: 8px;
   padding: 12px 16px 0 16px;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+  flex-wrap: wrap;
 }
 
 /* Las solapas principales y los paneles se centran con el mismo ancho máximo. */
