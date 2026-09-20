@@ -3,6 +3,9 @@ import { el, clearNode, showMensaje, confirmar } from "./ui.js";
 import { fetchProductos, crearProducto, actualizarProducto, eliminarProducto, fetchTiposProducto } from "./db.js";
 
 const SIN_TIPO_VALOR = "";
+// Valores especiales del filtro por tipo (no son ids reales de tipos_producto).
+const FILTRO_TODOS = "__todos__";
+const FILTRO_SIN_TIPO = "__sin_tipo__";
 
 export async function renderProductos(container) {
   clearNode(container);
@@ -19,6 +22,10 @@ export async function renderProductos(container) {
     tiposProducto = [];
   }
 
+  // Productos traídos de la base: se guardan acá para poder filtrar en pantalla
+  // sin tener que volver a consultar cada vez que se cambia el filtro.
+  let productosCargados = [];
+
   function crearSelectTipo(tipoProductoIdActual) {
     const select = el("select", { class: "select-tipo" });
     select.appendChild(el("option", { value: SIN_TIPO_VALOR }, "Sin tipo"));
@@ -34,22 +41,60 @@ export async function renderProductos(container) {
   const botonNuevo = el("button", { class: "btn btn--primario", type: "button" }, "Agregar producto");
   const formNuevo = el("div", { class: "form-agregar" }, [inputNuevo, selectNuevoTipo, botonNuevo]);
 
+  /* ---------- Filtro por tipo de producto ---------- */
+  // Además de los tipos cargados, incluye "Todos los tipos" (sin filtrar) y
+  // "Sin tipo" (productos que todavía no fueron clasificados).
+  const selectFiltroTipo = el("select", { class: "select-tipo", id: "filtro-tipo-producto" });
+  selectFiltroTipo.appendChild(el("option", { value: FILTRO_TODOS }, "Todos los tipos"));
+  tiposProducto.forEach((tipo) => {
+    selectFiltroTipo.appendChild(el("option", { value: String(tipo.id) }, tipo.nombre));
+  });
+  selectFiltroTipo.appendChild(el("option", { value: FILTRO_SIN_TIPO }, "Sin tipo"));
+  selectFiltroTipo.value = FILTRO_TODOS;
+
+  const filtroBox = el("div", { class: "form-filtro" }, [
+    el("label", { class: "form-filtro__label", for: "filtro-tipo-producto" }, "Filtrar por tipo"),
+    selectFiltroTipo,
+  ]);
+
+  selectFiltroTipo.addEventListener("change", pintarLista);
+
   container.appendChild(el("h2", {}, "Productos"));
   container.appendChild(mensajeBox);
   container.appendChild(formNuevo);
+  container.appendChild(filtroBox);
   container.appendChild(listaBox);
+
+  // Devuelve los productos que corresponden al filtro elegido.
+  function productosFiltrados() {
+    const filtro = selectFiltroTipo.value;
+    if (filtro === FILTRO_TODOS) return productosCargados;
+    if (filtro === FILTRO_SIN_TIPO) return productosCargados.filter((p) => p.tipo_producto_id == null);
+    return productosCargados.filter((p) => String(p.tipo_producto_id) === filtro);
+  }
+
+  // Dibuja la lista aplicando el filtro actual (no consulta la base).
+  function pintarLista() {
+    clearNode(listaBox);
+    if (productosCargados.length === 0) {
+      listaBox.appendChild(el("p", { class: "texto-ayuda" }, "Todavía no cargaste ningún producto."));
+      return;
+    }
+    const productos = productosFiltrados();
+    if (productos.length === 0) {
+      listaBox.appendChild(el("p", { class: "texto-ayuda" }, "No hay productos de ese tipo."));
+      return;
+    }
+    const ul = el("ul", { class: "abm-lista" });
+    productos.forEach((producto) => ul.appendChild(renderFila(producto)));
+    listaBox.appendChild(ul);
+  }
 
   async function cargar() {
     clearNode(listaBox);
     try {
-      const productos = await fetchProductos();
-      if (productos.length === 0) {
-        listaBox.appendChild(el("p", { class: "texto-ayuda" }, "Todavía no cargaste ningún producto."));
-        return;
-      }
-      const ul = el("ul", { class: "abm-lista" });
-      productos.forEach((producto) => ul.appendChild(renderFila(producto)));
-      listaBox.appendChild(ul);
+      productosCargados = await fetchProductos();
+      pintarLista();
     } catch (err) {
       showMensaje(mensajeBox, "No se pudieron cargar los productos: " + err.message);
     }

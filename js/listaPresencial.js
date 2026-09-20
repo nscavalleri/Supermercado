@@ -12,6 +12,37 @@ import {
 } from "./db.js";
 
 const TODOS = "__todos__";
+// Supermercado que se abre por defecto al entrar a la app (si está cargado en
+// Configuración > Supermercados). Si no existe, se abre la vista "Todos".
+const SUPERMERCADO_POR_DEFECTO = "Mercadona";
+
+// Subsolapa elegida durante la sesión: se recuerda mientras la app está
+// abierta, así volver a Presencial no pierde el supermercado que estabas
+// mirando. Al entrar a la app (o al recargar la página) vuelve a null y se
+// aplica el default de arriba.
+let seleccionActual = null;
+
+// Vuelve a dejar la selección en el default (lo llama app.js al ingresar).
+export function resetSeleccionPresencial() {
+  seleccionActual = null;
+}
+
+// Compara nombres ignorando mayúsculas, espacios y acentos.
+function mismoNombre(a, b) {
+  const normalizar = (texto) =>
+    (texto || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "");
+  return normalizar(a) === normalizar(b);
+}
+
+// Default al entrar: Mercadona si existe; si no, "Todos".
+function seleccionPorDefecto(supermercados) {
+  const preferido = supermercados.find((s) => mismoNombre(s.nombre, SUPERMERCADO_POR_DEFECTO));
+  return preferido ? preferido.id : TODOS;
+}
 
 export async function renderPresencial(container) {
   clearNode(container);
@@ -29,7 +60,15 @@ export async function renderPresencial(container) {
     return;
   }
 
-  let activo = TODOS;
+  // Si todavía no hay selección en esta sesión (o el supermercado elegido ya
+  // no existe), se aplica el default: Mercadona si está, si no "Todos".
+  const sigueExistiendo =
+    seleccionActual === TODOS || supermercados.some((s) => s.id === seleccionActual);
+  if (seleccionActual === null || !sigueExistiendo) {
+    seleccionActual = seleccionPorDefecto(supermercados);
+  }
+
+  let activo = seleccionActual;
 
   function renderTabs() {
     clearNode(tabsBox);
@@ -46,6 +85,7 @@ export async function renderPresencial(container) {
       boton.addEventListener("click", () => {
         if (activo === op.id) return;
         activo = op.id;
+        seleccionActual = op.id;
         renderTabs();
         renderContenido();
       });

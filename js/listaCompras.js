@@ -14,6 +14,10 @@ export function crearListaComprasView(config) {
     const mensajeBox = el("div", { class: "mensaje-box" });
     const listaBox = el("div", { class: "lista-compras" }, "Cargando...");
 
+    // Items que están actualmente en la lista; se usa para no agregar dos
+    // veces el mismo producto (ver onSubmit más abajo).
+    let itemsActuales = [];
+
     let productosCatalogo = [];
     try {
       productosCatalogo = await fetchProductos();
@@ -32,6 +36,13 @@ export function crearListaComprasView(config) {
           if (!productosCatalogo.some((p) => p.id === producto.id)) {
             productosCatalogo.push(producto);
           }
+          // Si el producto ya está en la lista, no se agrega de nuevo:
+          // se ignora y se avisa, para no tener filas repetidas.
+          if (yaEstaEnLaLista(producto.id)) {
+            showMensaje(mensajeBox, `"${producto.nombre}" ya está en la lista.`, "info");
+            return;
+          }
+          clearNode(mensajeBox);
           await config.agregarItem(producto.id);
           await cargar();
         } catch (err) {
@@ -39,6 +50,10 @@ export function crearListaComprasView(config) {
         }
       },
     });
+
+    function yaEstaEnLaLista(productoId) {
+      return itemsActuales.some((item) => item.producto && item.producto.id === productoId);
+    }
 
     container.appendChild(mensajeBox);
     container.appendChild(formAgregar);
@@ -48,6 +63,7 @@ export function crearListaComprasView(config) {
       clearNode(listaBox);
       try {
         const items = await config.fetchItems();
+        itemsActuales = items;
         if (items.length === 0) {
           listaBox.appendChild(el("p", { class: "texto-ayuda" }, "La lista está vacía. Agregá productos arriba."));
           return;

@@ -12,7 +12,7 @@ import { renderProductos } from "./productos.js";
 import { renderSupermercados } from "./supermercados.js";
 import { renderTiposProducto } from "./tiposProducto.js";
 import { renderListaOnline } from "./listaOnline.js";
-import { renderPresencial } from "./listaPresencial.js";
+import { renderPresencial, resetSeleccionPresencial } from "./listaPresencial.js";
 
 const pantallaLogin = document.getElementById("pantalla-login");
 const pantallaApp = document.getElementById("pantalla-app");
@@ -52,6 +52,11 @@ function mostrarApp() {
   pantallaLogin.classList.add("oculto");
   pantallaApp.classList.remove("oculto");
   headerUsuario.textContent = getUsuarioActual() || "";
+  // Al ingresar, la app siempre arranca en Lista > Presencial, y dentro de
+  // Presencial en el supermercado por defecto (Mercadona si existe, si no "Todos").
+  subtabListaActiva = "presencial";
+  subtabConfigActiva = "productos";
+  resetSeleccionPresencial();
   activarTab("lista");
 }
 
