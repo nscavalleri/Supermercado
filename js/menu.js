@@ -17,9 +17,8 @@ import {
 
 const SUPERMERCADO_POR_DEFECTO = "Mercadona";
 const DESTINO_ONLINE = "online";
-// Valores especiales del filtro por tipo de comida (no son ids reales).
+// Valor especial del filtro por tipo de comida (no es un id real).
 const FILTRO_TODOS = "__todos__";
-const FILTRO_SIN_TIPO = "__sin_tipo__";
 
 // Día de hoy en el mismo criterio que la tabla dias_semana: 1 = Lunes ... 7 = Domingo.
 function diaDeHoy() {
@@ -130,16 +129,23 @@ export async function renderMenu(container) {
     const tipoChip = item.comida?.tipo_comida
       ? el("span", { class: "abm-lista__tipo" }, item.comida.tipo_comida.nombre)
       : null;
-    const aLaLista = el("button", { class: "btn btn--secundario btn--chico", type: "button" }, "A la lista");
+    const verIngredientes = el(
+      "button",
+      {
+        class: `btn btn--secundario btn--chico${panelIngredientes === item.id ? " btn--activo" : ""}`,
+        type: "button",
+      },
+      "Ingredientes"
+    );
     const quitar = botonIcono("eliminar", "Quitar del menú");
 
     const fila = el("div", { class: "item-lista__fila item-lista__fila--menu" }, [
       nombre,
       tipoChip,
-      el("div", { class: "abm-lista__acciones" }, [aLaLista, quitar]),
+      el("div", { class: "abm-lista__acciones" }, [verIngredientes, quitar]),
     ]);
 
-    aLaLista.addEventListener("click", () => {
+    verIngredientes.addEventListener("click", () => {
       panelIngredientes = panelIngredientes === item.id ? null : item.id;
       pintar();
     });
@@ -180,78 +186,98 @@ export async function renderMenu(container) {
       return caja;
     }
 
-    caja.appendChild(el("p", { class: "panel-ingredientes__ayuda" }, "Destildá los que ya tenés:"));
+    caja.appendChild(
+      el(
+        "p",
+        { class: "panel-ingredientes__ayuda" },
+        "Destildá los que ya tenés y elegí a qué lista va cada uno:"
+      )
+    );
 
-    const checks = [];
+    /* ---------- Un destino por ingrediente ---------- */
+    // Cada ingrediente tiene su propio desplegable, así se puede mandar uno a
+    // Mercadona, otro a Carrefour y otro a la lista Online de una sola vez.
+    function crearSelectDestino() {
+      const select = el("select", { class: "select-tipo select-destino" });
+      supermercados.forEach((s) => {
+        select.appendChild(el("option", { value: `p:${s.id}` }, s.nombre));
+      });
+      select.appendChild(el("option", { value: DESTINO_ONLINE }, "Online"));
+
+      const preferido = supermercados.find((s) => mismoNombre(s.nombre, SUPERMERCADO_POR_DEFECTO));
+      if (preferido) select.value = `p:${preferido.id}`;
+      else if (supermercados.length > 0) select.value = `p:${supermercados[0].id}`;
+      else select.value = DESTINO_ONLINE;
+      return select;
+    }
+
+    function nombreDestino(valor) {
+      if (valor === DESTINO_ONLINE) return "Online";
+      const id = Number(valor.slice(2));
+      const sup = supermercados.find((s) => s.id === id);
+      return sup ? sup.nombre : "la lista";
+    }
+
+    const filas = [];
     const ul = el("ul", { class: "item-lista" });
     ingredientes.forEach((producto) => {
-      const check = el("input", { type: "checkbox", checked: true });
+      const check = el("input", { type: "checkbox" });
       check.checked = true;
-      checks.push({ check, producto });
+      const selectDestino = crearSelectDestino();
+      filas.push({ check, selectDestino, producto });
       ul.appendChild(
-        el("li", { class: "item-lista__fila" }, [check, el("span", { class: "item-lista__nombre" }, producto.nombre)])
+        el("li", { class: "item-lista__fila panel-ingredientes__fila" }, [
+          check,
+          el("span", { class: "item-lista__nombre" }, producto.nombre),
+          selectDestino,
+        ])
       );
     });
     caja.appendChild(ul);
 
-    /* ---------- Destino: supermercados presenciales + lista Online ---------- */
-    const selectDestino = el("select", { class: "select-tipo" });
-    supermercados.forEach((s) => {
-      selectDestino.appendChild(el("option", { value: `p:${s.id}` }, s.nombre));
-    });
-    selectDestino.appendChild(el("option", { value: DESTINO_ONLINE }, "Online"));
-
-    const preferido = supermercados.find((s) => mismoNombre(s.nombre, SUPERMERCADO_POR_DEFECTO));
-    if (preferido) selectDestino.value = `p:${preferido.id}`;
-    else if (supermercados.length > 0) selectDestino.value = `p:${supermercados[0].id}`;
-    else selectDestino.value = DESTINO_ONLINE;
-
     const resultado = el("div", { class: "mensaje-box" });
-    const confirmar = el("button", { class: "btn btn--primario btn--chico", type: "button" }, "Agregar a la lista");
-
-    caja.appendChild(
-      el("div", { class: "form-filtro" }, [
-        el("label", { class: "form-filtro__label" }, "Lista"),
-        selectDestino,
-        confirmar,
-      ])
+    const confirmar = el(
+      "button",
+      { class: "btn btn--primario btn--chico", type: "button" },
+      "Agregar a las listas"
     );
+    caja.appendChild(el("div", { class: "panel-ingredientes__acciones" }, [confirmar]));
     caja.appendChild(resultado);
 
     confirmar.addEventListener("click", async () => {
-      const elegidos = checks.filter(({ check }) => check.checked).map(({ producto }) => producto.id);
-      if (elegidos.length === 0) {
+      const elegidas = filas.filter(({ check }) => check.checked);
+      if (elegidas.length === 0) {
         showMensaje(resultado, "No marcaste ningún ingrediente.", "info");
         return;
       }
-      const valor = selectDestino.value;
-      const destino =
-        valor === DESTINO_ONLINE
-          ? { tipo: "online" }
-          : { tipo: "presencial", supermercadoId: Number(valor.slice(2)) };
+
+      // Se agrupan los ingredientes por la lista que eligió cada uno, para
+      // hacer una sola operación por lista.
+      const porDestino = new Map();
+      elegidas.forEach(({ selectDestino, producto }) => {
+        const valor = selectDestino.value;
+        if (!porDestino.has(valor)) porDestino.set(valor, []);
+        porDestino.get(valor).push(producto.id);
+      });
 
       confirmar.disabled = true;
       try {
-        const { agregados, yaEstaban } = await agregarProductosALista(elegidos, destino);
-        const dondeTexto =
-          valor === DESTINO_ONLINE
-            ? "la lista Online"
-            : selectDestino.options[selectDestino.selectedIndex].textContent;
-        let texto;
-        if (agregados === 0) {
-          texto = yaEstaban === 1
-            ? `Ese producto ya estaba en ${dondeTexto}.`
-            : `Esos productos ya estaban en ${dondeTexto}.`;
-        } else {
-          const cuantos = agregados === 1 ? "Se agregó 1 producto" : `Se agregaron ${agregados} productos`;
-          const repetidos = yaEstaban === 0
-            ? ""
-            : yaEstaban === 1
-            ? " (1 ya estaba)"
-            : ` (${yaEstaban} ya estaban)`;
-          texto = `${cuantos} a ${dondeTexto}${repetidos}.`;
+        const resumen = [];
+        for (const [valor, ids] of porDestino) {
+          const destino =
+            valor === DESTINO_ONLINE
+              ? { tipo: "online" }
+              : { tipo: "presencial", supermercadoId: Number(valor.slice(2)) };
+          const { agregados, yaEstaban } = await agregarProductosALista(ids, destino);
+          const repetidos = yaEstaban === 0 ? "" : ` (${yaEstaban} ya ${yaEstaban === 1 ? "estaba" : "estaban"})`;
+          resumen.push(`${nombreDestino(valor)}: ${agregados}${repetidos}`);
         }
-        showMensaje(resultado, texto, "info");
+        const total = resumen.length;
+        showMensaje(
+          resultado,
+          (total === 1 ? "Agregado a " : "Agregados a ") + resumen.join(" · ") + ".",
+          "info"
+        );
       } catch (err) {
         showMensaje(resultado, "No se pudo agregar: " + err.message);
       } finally {
@@ -296,9 +322,8 @@ export async function renderMenu(container) {
     // Primero se elige el tipo (Principal, Guarnición...) y el segundo
     // desplegable queda con las comidas de ese tipo.
     const selectTipo = el("select", { class: "select-tipo" });
-    selectTipo.appendChild(el("option", { value: FILTRO_TODOS }, "Todos los tipos"));
+    selectTipo.appendChild(el("option", { value: FILTRO_TODOS }, "Todas"));
     tiposComida.forEach((t) => selectTipo.appendChild(el("option", { value: String(t.id) }, t.nombre)));
-    selectTipo.appendChild(el("option", { value: FILTRO_SIN_TIPO }, "Sin tipo"));
     selectTipo.value = filtroTipoSlot;
 
     const select = el("select", { class: "select-tipo" });
@@ -308,8 +333,6 @@ export async function renderMenu(container) {
       const filtradas =
         filtroTipoSlot === FILTRO_TODOS
           ? disponibles
-          : filtroTipoSlot === FILTRO_SIN_TIPO
-          ? disponibles.filter((c) => c.tipo_comida_id == null)
           : disponibles.filter((c) => String(c.tipo_comida_id) === filtroTipoSlot);
 
       if (filtradas.length === 0) {

@@ -22,8 +22,8 @@ import {
   buscarOCrearProducto,
 } from "./db.js";
 
-// Valor del select cuando la comida todavía no tiene tipo asignado.
-const SIN_TIPO_VALOR = "";
+// Tipo que viene preseleccionado al cargar una comida nueva.
+const TIPO_POR_DEFECTO = "Principal";
 
 export async function renderConfigMenu(container) {
   clearNode(container);
@@ -52,13 +52,25 @@ export async function renderConfigMenu(container) {
     tiposComida = [];
   }
 
+  // Select con los tipos cargados en la base, sin opción "Sin tipo".
+  // Si no se pasa un tipo actual, queda elegido Principal (o el primero
+  // de la lista si ese tipo no estuviera cargado).
   function crearSelectTipo(tipoComidaIdActual) {
     const select = el("select", { class: "select-tipo" });
-    select.appendChild(el("option", { value: SIN_TIPO_VALOR }, "Sin tipo"));
+
+    if (tiposComida.length === 0) {
+      select.appendChild(el("option", { value: "" }, "Sin tipos cargados"));
+      select.disabled = true;
+      return select;
+    }
+
     tiposComida.forEach((tipo) => {
       select.appendChild(el("option", { value: String(tipo.id) }, tipo.nombre));
     });
-    select.value = tipoComidaIdActual != null ? String(tipoComidaIdActual) : SIN_TIPO_VALOR;
+
+    const actual = tiposComida.find((t) => t.id === tipoComidaIdActual);
+    const porDefecto = tiposComida.find((t) => mismoNombre(t.nombre, TIPO_POR_DEFECTO)) || tiposComida[0];
+    select.value = String((actual || porDefecto).id);
     return select;
   }
 
@@ -279,7 +291,6 @@ export async function renderConfigMenu(container) {
       const creada = await crearComida(nombre, tipoElegido);
       clearNode(mensajeBox);
       inputNueva.value = "";
-      selectNuevoTipo.value = SIN_TIPO_VALOR;
       // Se abre sola para poder cargarle los ingredientes enseguida.
       abiertas.add(creada.id);
       await cargar();
