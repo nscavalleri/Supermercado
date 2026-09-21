@@ -580,6 +580,170 @@ select:focus {
   margin-top: 0;
 }
 
+/* ---------- Menú semanal (solapa Menú) ---------- */
+
+/* Cada día es una tarjeta, igual que los paneles de las otras solapas. */
+.dia {
+  background: var(--tarjeta);
+  border-radius: var(--radio);
+  padding: 16px;
+  margin-top: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+}
+
+.dia:first-child {
+  margin-top: 8px;
+}
+
+.dia__titulo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--fucsia-oscuro);
+  border-bottom: 2px solid var(--celeste);
+  padding-bottom: 6px;
+  margin-bottom: 4px;
+}
+
+/* Distintivo del día de hoy, que siempre es el primero de la lista. */
+.dia__hoy {
+  background: var(--celeste);
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.momento {
+  margin-top: 16px;
+}
+
+.momento__titulo {
+  color: var(--texto-suave);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0 0 8px 0;
+}
+
+/* Cada comida del menú: la fila visible y, si está abierto, el panel de
+   ingredientes debajo. */
+.item-lista__contenedor {
+  list-style: none;
+}
+
+.item-lista__fila--menu {
+  background: var(--fondo);
+}
+
+.momento > .form-filtro,
+.momento > .btn {
+  margin-top: 8px;
+  margin-bottom: 0;
+}
+
+/* Panel para mandar los ingredientes de una comida a una lista de compra. */
+.panel-ingredientes {
+  margin-top: 8px;
+  padding: 12px;
+  border: 2px dashed var(--borde);
+  border-radius: 10px;
+}
+
+.panel-ingredientes__ayuda {
+  margin: 0 0 10px 0;
+  color: var(--texto-suave);
+  font-size: 0.9rem;
+}
+
+.panel-ingredientes .form-filtro {
+  margin: 12px 0 0 0;
+}
+
+/* ---------- Configuración > Menú (comidas e ingredientes) ---------- */
+
+/* La fila de una comida se apila: cabecera arriba, ingredientes abajo. */
+.abm-lista__fila--bloque {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.comida__cabecera {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.comida__cabecera input[type="text"] {
+  flex: 1;
+  min-width: 140px;
+}
+
+.comida__cabecera select {
+  flex: 1;
+  min-width: 140px;
+  max-width: 220px;
+}
+
+.comida__ingredientes {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--borde);
+}
+
+.comida__ingredientes .form-agregar {
+  margin-bottom: 12px;
+}
+
+/* Ingredientes como etiquetas con una cruz para quitarlos. */
+.chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--fondo);
+  border: 1px solid var(--borde);
+  border-radius: 999px;
+  padding: 5px 6px 5px 12px;
+  font-size: 0.9rem;
+}
+
+.chip__quitar {
+  border: none;
+  background: transparent;
+  color: var(--texto-suave);
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.chip__quitar:hover {
+  background: #fde2e5;
+  color: var(--peligro-oscuro);
+}
+
+/* Botón secundario mientras su panel está abierto. */
+.btn--activo {
+  background: var(--celeste);
+  border-color: var(--celeste);
+  color: white;
+}
+
 /* ---------- Responsive ---------- */
 
 @media (max-width: 480px) {
