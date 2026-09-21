@@ -471,6 +471,12 @@ select:focus {
   border-color: var(--celeste);
 }
 
+.btn-icono--duplicar:hover {
+  background: var(--fondo);
+  border-color: var(--texto-suave);
+  color: var(--texto);
+}
+
 .btn-icono--eliminar {
   color: var(--peligro);
 }
