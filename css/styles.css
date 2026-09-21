@@ -664,6 +664,17 @@ select:focus {
   margin: 12px 0 0 0;
 }
 
+/* Cada ingrediente tiene su propio desplegable de lista destino. */
+.panel-ingredientes__fila .select-destino {
+  margin-left: auto;
+  min-width: 140px;
+  max-width: 180px;
+}
+
+.panel-ingredientes__acciones {
+  margin-top: 12px;
+}
+
 /* ---------- Configuración > Menú (comidas e ingredientes) ---------- */
 
 /* La fila de una comida se apila: cabecera arriba, ingredientes abajo. */
@@ -737,11 +748,12 @@ select:focus {
   color: var(--peligro-oscuro);
 }
 
-/* Botón secundario mientras su panel está abierto. */
+/* Botón secundario mientras su panel está abierto: fondo celeste suave con
+   texto oscuro, que se lee mejor que blanco sobre celeste. */
 .btn--activo {
-  background: var(--celeste);
-  border-color: var(--celeste);
-  color: white;
+  background: #e4f9fc;
+  border: 2px solid var(--celeste);
+  color: var(--celeste-oscuro);
 }
 
 /* ---------- Responsive ---------- */
