@@ -15,6 +15,7 @@ import {
   crearComida,
   actualizarComida,
   eliminarComida,
+  duplicarComida,
   agregarIngrediente,
   eliminarIngrediente,
   fetchProductos,
@@ -37,6 +38,10 @@ export async function renderConfigMenu(container) {
   // Comidas cuyo detalle de ingredientes está abierto: se recuerda entre
   // recargas para que agregar un ingrediente no cierre el panel.
   const abiertas = new Set();
+  // Comida cuyo campo de ingredientes debe recuperar el foco después de
+  // volver a dibujar la pantalla, para poder encadenar varias altas seguidas.
+  let enfocarIngredientesDe = null;
+  let inputPendienteFoco = null;
 
   try {
     productosCatalogo = await fetchProductos();
@@ -116,6 +121,13 @@ export async function renderConfigMenu(container) {
     const ul = el("ul", { class: "abm-lista" });
     comidas.forEach((comida) => ul.appendChild(renderComida(comida)));
     listaBox.appendChild(ul);
+
+    // El foco se pone recién acá, cuando el input ya está en la pantalla.
+    if (inputPendienteFoco) {
+      inputPendienteFoco.focus();
+      inputPendienteFoco = null;
+      enfocarIngredientesDe = null;
+    }
   }
 
   function renderComida(comida) {
@@ -141,11 +153,13 @@ export async function renderConfigMenu(container) {
       },
       abierta ? "Ocultar" : "Ingredientes"
     );
+    const botonDuplicar = botonIcono("duplicar", "Duplicar con sus ingredientes");
     const botonEditar = botonIcono("editar");
     const botonEliminar = botonIcono("eliminar");
 
     const acciones = el("div", { class: "abm-lista__acciones" }, [
       botonDetalle,
+      botonDuplicar,
       botonEditar,
       botonEliminar,
     ]);
@@ -193,6 +207,19 @@ export async function renderConfigMenu(container) {
       cancelar.addEventListener("click", pintar);
     });
 
+    botonDuplicar.addEventListener("click", async () => {
+      try {
+        const productoIds = comida.ingredientes.map((i) => i.producto?.id).filter(Boolean);
+        const copia = await duplicarComida(nombreParaCopia(comida.nombre), comida.tipo_comida_id, productoIds);
+        clearNode(mensajeBox);
+        // Se abre sola, lista para retocarle el nombre o los ingredientes.
+        abiertas.add(copia.id);
+        await cargar();
+      } catch (err) {
+        showMensaje(mensajeBox, "No se pudo duplicar: " + err.message);
+      }
+    });
+
     botonEliminar.addEventListener("click", async () => {
       if (!confirmar(`¿Eliminar "${comida.nombre}"? También se va a quitar del menú semanal.`)) return;
       try {
@@ -214,7 +241,7 @@ export async function renderConfigMenu(container) {
     const caja = el("div", { class: "comida__ingredientes" });
     const yaEstan = new Set(comida.ingredientes.map((i) => i.producto?.id));
 
-    const { nodo: formIngrediente } = crearInputConAutocompletado({
+    const { nodo: formIngrediente, input: inputIngrediente } = crearInputConAutocompletado({
       placeholder: "Agregar ingrediente (ej: Papas)",
       getSugerencias: (texto) =>
         productosCatalogo.filter(
@@ -230,6 +257,8 @@ export async function renderConfigMenu(container) {
           }
           clearNode(mensajeBox);
           await agregarIngrediente(comida.id, producto.id);
+          // Después de recargar, el cursor vuelve a este mismo campo.
+          enfocarIngredientesDe = comida.id;
           await cargar();
         } catch (err) {
           showMensaje(mensajeBox, "No se pudo agregar el ingrediente: " + err.message);
@@ -237,6 +266,7 @@ export async function renderConfigMenu(container) {
       },
     });
     caja.appendChild(formIngrediente);
+    if (enfocarIngredientesDe === comida.id) inputPendienteFoco = inputIngrediente;
 
     if (comida.ingredientes.length === 0) {
       caja.appendChild(
@@ -274,6 +304,15 @@ export async function renderConfigMenu(container) {
     });
     caja.appendChild(chips);
     return caja;
+  }
+
+  // "Milanesa" -> "Milanesa (copia)", y si ya existe, "(copia 2)", "(copia 3)"...
+  function nombreParaCopia(original) {
+    const base = `${original} (copia)`;
+    if (!comidas.some((c) => mismoNombre(c.nombre, base))) return base;
+    let n = 2;
+    while (comidas.some((c) => mismoNombre(c.nombre, `${original} (copia ${n})`))) n++;
+    return `${original} (copia ${n})`;
   }
 
   async function agregarComida(texto) {

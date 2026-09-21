@@ -54,6 +54,8 @@ const ICONOS = {
   eliminar:
     '<path d="M4 7h16" /><path d="M9 7V5.2A1.2 1.2 0 0 1 10.2 4h3.6A1.2 1.2 0 0 1 15 5.2V7" />' +
     '<path d="M6.5 7l.9 12a2 2 0 0 0 2 1.9h5.2a2 2 0 0 0 2-1.9l.9-12" /><path d="M10 11v6M14 11v6" />',
+  // Dos hojas superpuestas
+  duplicar: '<rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V5.5A1.5 1.5 0 0 1 6.5 4H15" />',
   // Tilde
   guardar: '<path d="M5 12.5l4.5 4.5L19 7.5" />',
   // Cruz
@@ -62,6 +64,7 @@ const ICONOS = {
 
 const ETIQUETAS = {
   editar: "Editar",
+  duplicar: "Duplicar",
   eliminar: "Eliminar",
   guardar: "Guardar",
   cancelar: "Cancelar",

@@ -190,7 +190,7 @@ export async function renderMenu(container) {
       el(
         "p",
         { class: "panel-ingredientes__ayuda" },
-        "Destildá los que ya tenés y elegí a qué lista va cada uno:"
+        "Tildá los que necesitás comprar y elegí a qué lista va cada uno:"
       )
     );
 
@@ -221,8 +221,8 @@ export async function renderMenu(container) {
     const filas = [];
     const ul = el("ul", { class: "item-lista" });
     ingredientes.forEach((producto) => {
+      // Vienen destildados: se tilda solo lo que hace falta comprar.
       const check = el("input", { type: "checkbox" });
-      check.checked = true;
       const selectDestino = crearSelectDestino();
       filas.push({ check, selectDestino, producto });
       ul.appendChild(

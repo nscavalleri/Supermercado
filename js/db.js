@@ -274,6 +274,18 @@ export async function actualizarComida(id, nombre, tipoComidaId = null) {
   if (error) throw error;
 }
 
+// Crea una comida nueva copiando el tipo y los ingredientes de otra.
+export async function duplicarComida(nombre, tipoComidaId, productoIds) {
+  const creada = await crearComida(nombre, tipoComidaId);
+  if (productoIds.length > 0) {
+    const { error } = await supabase
+      .from("comida_ingredientes")
+      .insert(productoIds.map((id) => ({ comida_id: creada.id, producto_id: id })));
+    if (error) throw error;
+  }
+  return creada;
+}
+
 export async function eliminarComida(id) {
   const { error } = await supabase.from("comidas").delete().eq("id", id);
   if (error) throw error;
