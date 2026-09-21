@@ -29,6 +29,44 @@ export function showMensaje(container, texto, tipo = "error") {
   container.appendChild(el("div", { class: `mensaje mensaje--${tipo}` }, texto));
 }
 
+/* ---------- Botones con ícono (usados en las listas de Configuración) ---------- */
+// Son SVG dibujados a mano (no hay librería de íconos): trazo simple, heredan
+// el color del botón con stroke="currentColor" (ver .btn-icono en styles.css).
+
+const ICONOS = {
+  // Lápiz
+  editar: '<path d="M4 20h4L19 9l-4-4L4 16v4z" /><path d="M14.5 5.5l4 4" />',
+  // Tacho de basura
+  eliminar:
+    '<path d="M4 7h16" /><path d="M9 7V5.2A1.2 1.2 0 0 1 10.2 4h3.6A1.2 1.2 0 0 1 15 5.2V7" />' +
+    '<path d="M6.5 7l.9 12a2 2 0 0 0 2 1.9h5.2a2 2 0 0 0 2-1.9l.9-12" /><path d="M10 11v6M14 11v6" />',
+  // Tilde
+  guardar: '<path d="M5 12.5l4.5 4.5L19 7.5" />',
+  // Cruz
+  cancelar: '<path d="M6 6l12 12M18 6L6 18" />',
+};
+
+const ETIQUETAS = {
+  editar: "Editar",
+  eliminar: "Eliminar",
+  guardar: "Guardar",
+  cancelar: "Cancelar",
+};
+
+// Botón cuadrado con ícono. El texto va en title/aria-label, así se ve el
+// tooltip al pasar el mouse y los lectores de pantalla lo siguen leyendo.
+export function botonIcono(tipo, etiqueta) {
+  const texto = etiqueta || ETIQUETAS[tipo] || tipo;
+  const boton = el("button", {
+    class: `btn-icono btn-icono--${tipo}`,
+    type: "button",
+    title: texto,
+    "aria-label": texto,
+  });
+  boton.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${ICONOS[tipo] || ""}</svg>`;
+  return boton;
+}
+
 // Input con autocompletado simple contra una lista de {id, nombre}.
 // onSubmit(texto) se llama al elegir una sugerencia, tocar "Agregar" o apretar Enter.
 export function crearInputConAutocompletado({ placeholder, getSugerencias, onSubmit }) {
