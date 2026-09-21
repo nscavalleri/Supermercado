@@ -201,6 +201,148 @@ export async function eliminarItemPresencial(id) {
   if (error) throw error;
 }
 
+/* ---------- Menú: catálogos fijos (días y momentos de comida) ---------- */
+// Son tablas chicas que no se editan desde la app: se cargan una vez con el
+// SQL de creación (1 = Lunes ... 7 = Domingo; Almuerzo y Cena).
+
+export async function fetchDiasSemana() {
+  const { data, error } = await supabase
+    .from("dias_semana")
+    .select("id, nombre")
+    .order("id", { ascending: true });
+  if (error) throw error;
+  return data;
+}
+
+export async function fetchMomentosComida() {
+  const { data, error } = await supabase
+    .from("momentos_comida")
+    .select("id, nombre, orden")
+    .order("orden", { ascending: true });
+  if (error) throw error;
+  return data;
+}
+
+/* ---------- Tipos de comida (Principal, Guarnición...) ---------- */
+// Catálogo de solo lectura para la app: se carga directo por base de datos.
+
+export async function fetchTiposComida() {
+  const { data, error } = await supabase
+    .from("tipos_comida")
+    .select("id, nombre")
+    .order("nombre", { ascending: true });
+  if (error) throw error;
+  return data;
+}
+
+/* ---------- Comidas y sus ingredientes (Configuración > Menú) ---------- */
+// Cada comida es un plato con un tipo, y sus ingredientes son productos del catálogo.
+
+export async function fetchComidas() {
+  const { data, error } = await supabase
+    .from("comidas")
+    .select(
+      "id, nombre, tipo_comida_id, tipo_comida:tipos_comida(id, nombre), ingredientes:comida_ingredientes(id, producto:productos(id, nombre))"
+    )
+    .order("nombre", { ascending: true });
+  if (error) throw error;
+  // Los ingredientes vienen en el orden que los devuelve la base: acá los
+  // dejamos alfabéticos para que la pantalla sea previsible.
+  return (data || []).map((comida) => ({
+    ...comida,
+    ingredientes: (comida.ingredientes || []).sort((a, b) =>
+      (a.producto?.nombre || "").localeCompare(b.producto?.nombre || "", "es", { sensitivity: "base" })
+    ),
+  }));
+}
+
+export async function crearComida(nombre, tipoComidaId = null) {
+  const { data, error } = await supabase
+    .from("comidas")
+    .insert({ nombre: nombre.trim(), tipo_comida_id: tipoComidaId })
+    .select("id, nombre, tipo_comida_id")
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function actualizarComida(id, nombre, tipoComidaId = null) {
+  const { error } = await supabase
+    .from("comidas")
+    .update({ nombre: nombre.trim(), tipo_comida_id: tipoComidaId })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function eliminarComida(id) {
+  const { error } = await supabase.from("comidas").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function agregarIngrediente(comidaId, productoId) {
+  const { error } = await supabase
+    .from("comida_ingredientes")
+    .insert({ comida_id: comidaId, producto_id: productoId });
+  // 23505 = ya estaba ese producto en esa comida: no es un error para el usuario.
+  if (error && error.code !== "23505") throw error;
+}
+
+export async function eliminarIngrediente(id) {
+  const { error } = await supabase.from("comida_ingredientes").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/* ---------- Menú semanal (plantilla fija que se repite cada semana) ---------- */
+
+export async function fetchMenuSemanal() {
+  const { data, error } = await supabase
+    .from("menu_semanal")
+    .select(
+      "id, dia_id, momento_id, comida:comidas(id, nombre, tipo_comida:tipos_comida(id, nombre), ingredientes:comida_ingredientes(id, producto:productos(id, nombre)))"
+    )
+    .order("id", { ascending: true });
+  if (error) throw error;
+  return data;
+}
+
+export async function agregarComidaAlMenu(diaId, momentoId, comidaId) {
+  const { error } = await supabase
+    .from("menu_semanal")
+    .insert({ dia_id: diaId, momento_id: momentoId, comida_id: comidaId });
+  // 23505 = esa comida ya estaba en ese día y momento: se ignora.
+  if (error && error.code !== "23505") throw error;
+}
+
+export async function quitarComidaDelMenu(id) {
+  const { error } = await supabase.from("menu_semanal").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/* ---------- Mandar varios productos a una lista de compra ---------- */
+// destino: { tipo: "presencial", supermercadoId } | { tipo: "online" }
+// Devuelve { agregados, yaEstaban } para poder avisar qué pasó.
+// Los productos que ya estaban en esa lista se ignoran (no se duplican).
+
+export async function agregarProductosALista(productoIds, destino) {
+  const ids = [...new Set(productoIds)];
+  if (ids.length === 0) return { agregados: 0, yaEstaban: 0 };
+
+  const esOnline = destino.tipo === "online";
+  const actuales = esOnline ? await fetchListaOnline() : await fetchListaPresencial(destino.supermercadoId);
+  const yaEnLista = new Set((actuales || []).map((item) => item.producto?.id).filter(Boolean));
+
+  const faltantes = ids.filter((id) => !yaEnLista.has(id));
+  if (faltantes.length > 0) {
+    const filas = esOnline
+      ? faltantes.map((id) => ({ producto_id: id }))
+      : faltantes.map((id) => ({ producto_id: id, supermercado_id: destino.supermercadoId }));
+    const { error } = await supabase.from(esOnline ? "lista_online" : "lista_presencial").insert(filas);
+    if (error) throw error;
+  }
+
+  return { agregados: faltantes.length, yaEstaban: ids.length - faltantes.length };
+}
+
 /* ---------- Orden/agrupado por tipo de producto (usado por las listas online y presencial) ---------- */
 // Agrupa items de una lista (cada uno con item.producto.tipo_producto) por
 // nombre de tipo, ordena los grupos alfabéticamente y deja "Sin clasificar"

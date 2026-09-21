@@ -11,6 +11,8 @@ import { showMensaje, clearNode } from "./ui.js";
 import { renderProductos } from "./productos.js";
 import { renderSupermercados } from "./supermercados.js";
 import { renderTiposProducto } from "./tiposProducto.js";
+import { renderConfigMenu } from "./configMenu.js";
+import { renderMenu } from "./menu.js";
 import { renderListaOnline } from "./listaOnline.js";
 import { renderPresencial, resetSeleccionPresencial } from "./listaPresencial.js";
 
@@ -80,26 +82,33 @@ onAuthStateChange((session) => {
   else if (!session) mostrarLogin();
 });
 
-/* ---------- Navegación: solapas Lista / Configuración ---------- */
+/* ---------- Navegación: solapas Lista / Menú / Configuración ---------- */
 
-const btnTabLista = document.getElementById("btn-tab-lista");
-const btnTabConfiguracion = document.getElementById("btn-tab-configuracion");
-const tabLista = document.getElementById("tab-lista");
-const tabConfiguracion = document.getElementById("tab-configuracion");
+const botonesTab = {
+  lista: document.getElementById("btn-tab-lista"),
+  menu: document.getElementById("btn-tab-menu"),
+  configuracion: document.getElementById("btn-tab-configuracion"),
+};
+const panelesTab = {
+  lista: document.getElementById("tab-lista"),
+  menu: document.getElementById("tab-menu"),
+  configuracion: document.getElementById("tab-configuracion"),
+};
 
 function activarTab(tab) {
-  const esLista = tab === "lista";
-  btnTabLista.classList.toggle("tab-btn--activo", esLista);
-  btnTabConfiguracion.classList.toggle("tab-btn--activo", !esLista);
-  tabLista.classList.toggle("oculto", !esLista);
-  tabConfiguracion.classList.toggle("oculto", esLista);
+  Object.keys(panelesTab).forEach((nombre) => {
+    botonesTab[nombre].classList.toggle("tab-btn--activo", nombre === tab);
+    panelesTab[nombre].classList.toggle("oculto", nombre !== tab);
+  });
 
-  if (esLista) activarSubtabLista(subtabListaActiva);
+  if (tab === "lista") activarSubtabLista(subtabListaActiva);
+  else if (tab === "menu") renderMenu(panelesTab.menu);
   else activarSubtabConfiguracion(subtabConfigActiva);
 }
 
-btnTabLista.addEventListener("click", () => activarTab("lista"));
-btnTabConfiguracion.addEventListener("click", () => activarTab("configuracion"));
+Object.keys(botonesTab).forEach((nombre) => {
+  botonesTab[nombre].addEventListener("click", () => activarTab(nombre));
+});
 
 /* ---------- Subsolapas de Lista: Presencial / Online ---------- */
 
@@ -124,30 +133,35 @@ function activarSubtabLista(subtab) {
 btnSubtabPresencial.addEventListener("click", () => activarSubtabLista("presencial"));
 btnSubtabOnline.addEventListener("click", () => activarSubtabLista("online"));
 
-/* ---------- Subsolapas de Configuración: Productos / Supermercados / Tipos de producto ---------- */
+/* ---------- Subsolapas de Configuración: Productos / Supermercados / Tipos de producto / Menú ---------- */
 
-const btnSubtabProductos = document.getElementById("btn-subtab-productos");
-const btnSubtabSupermercados = document.getElementById("btn-subtab-supermercados");
-const btnSubtabTiposProducto = document.getElementById("btn-subtab-tipos-producto");
-const panelProductos = document.getElementById("config-productos");
-const panelSupermercados = document.getElementById("config-supermercados");
-const panelTiposProducto = document.getElementById("config-tipos-producto");
+const botonesConfig = {
+  productos: document.getElementById("btn-subtab-productos"),
+  supermercados: document.getElementById("btn-subtab-supermercados"),
+  "tipos-producto": document.getElementById("btn-subtab-tipos-producto"),
+  menu: document.getElementById("btn-subtab-menu"),
+};
+const panelesConfig = {
+  productos: document.getElementById("config-productos"),
+  supermercados: document.getElementById("config-supermercados"),
+  "tipos-producto": document.getElementById("config-tipos-producto"),
+  menu: document.getElementById("config-menu"),
+};
 let subtabConfigActiva = "productos";
 
 function activarSubtabConfiguracion(subtab) {
   subtabConfigActiva = subtab;
-  btnSubtabProductos.classList.toggle("subtab-btn--activo", subtab === "productos");
-  btnSubtabSupermercados.classList.toggle("subtab-btn--activo", subtab === "supermercados");
-  btnSubtabTiposProducto.classList.toggle("subtab-btn--activo", subtab === "tipos-producto");
-  panelProductos.classList.toggle("oculto", subtab !== "productos");
-  panelSupermercados.classList.toggle("oculto", subtab !== "supermercados");
-  panelTiposProducto.classList.toggle("oculto", subtab !== "tipos-producto");
+  Object.keys(panelesConfig).forEach((nombre) => {
+    botonesConfig[nombre].classList.toggle("subtab-btn--activo", nombre === subtab);
+    panelesConfig[nombre].classList.toggle("oculto", nombre !== subtab);
+  });
 
-  if (subtab === "productos") renderProductos(panelProductos);
-  else if (subtab === "supermercados") renderSupermercados(panelSupermercados, () => {});
-  else renderTiposProducto(panelTiposProducto);
+  if (subtab === "productos") renderProductos(panelesConfig.productos);
+  else if (subtab === "supermercados") renderSupermercados(panelesConfig.supermercados, () => {});
+  else if (subtab === "tipos-producto") renderTiposProducto(panelesConfig["tipos-producto"]);
+  else renderConfigMenu(panelesConfig.menu);
 }
 
-btnSubtabProductos.addEventListener("click", () => activarSubtabConfiguracion("productos"));
-btnSubtabSupermercados.addEventListener("click", () => activarSubtabConfiguracion("supermercados"));
-btnSubtabTiposProducto.addEventListener("click", () => activarSubtabConfiguracion("tipos-producto"));
+Object.keys(botonesConfig).forEach((nombre) => {
+  botonesConfig[nombre].addEventListener("click", () => activarSubtabConfiguracion(nombre));
+});

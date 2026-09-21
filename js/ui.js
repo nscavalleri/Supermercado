@@ -19,6 +19,20 @@ export function el(tag, attrs = {}, children = []) {
   return node;
 }
 
+// Compara dos nombres ignorando mayúsculas, espacios sobrantes y acentos.
+// Se usa para no crear productos/comidas duplicados por diferencias de tipeo.
+export function normalizarTexto(texto) {
+  return (texto || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "");
+}
+
+export function mismoNombre(a, b) {
+  return normalizarTexto(a) === normalizarTexto(b);
+}
+
 export function clearNode(node) {
   while (node.firstChild) node.removeChild(node.firstChild);
 }
@@ -69,7 +83,16 @@ export function botonIcono(tipo, etiqueta) {
 
 // Input con autocompletado simple contra una lista de {id, nombre}.
 // onSubmit(texto) se llama al elegir una sugerencia, tocar "Agregar" o apretar Enter.
-export function crearInputConAutocompletado({ placeholder, getSugerencias, onSubmit }) {
+// textoBoton permite cambiar la etiqueta del botón ("Agregar producto", etc.)
+// y extras son nodos que se insertan entre el input y el botón (por ejemplo,
+// el select de tipo en Configuración > Productos).
+export function crearInputConAutocompletado({
+  placeholder,
+  getSugerencias,
+  onSubmit,
+  textoBoton = "Agregar",
+  extras = [],
+}) {
   const wrapper = el("div", { class: "autocomplete" });
   const input = el("input", {
     type: "text",
@@ -78,7 +101,7 @@ export function crearInputConAutocompletado({ placeholder, getSugerencias, onSub
     autocomplete: "off",
   });
   const lista = el("ul", { class: "autocomplete__lista oculto" });
-  const boton = el("button", { class: "btn btn--primario", type: "button" }, "Agregar");
+  const boton = el("button", { class: "btn btn--primario", type: "button" }, textoBoton);
 
   let resaltado = -1;
 
@@ -152,7 +175,7 @@ export function crearInputConAutocompletado({ placeholder, getSugerencias, onSub
 
   wrapper.appendChild(input);
   wrapper.appendChild(lista);
-  const fila = el("div", { class: "form-agregar" }, [wrapper, boton]);
+  const fila = el("div", { class: "form-agregar" }, [wrapper, ...extras, boton]);
   return { nodo: fila, input };
 }
 

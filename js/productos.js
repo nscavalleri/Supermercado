@@ -1,5 +1,13 @@
 // Pantalla Configuración > Productos: ABM (alta, baja, modificación) del catálogo de productos.
-import { el, clearNode, showMensaje, confirmar, botonIcono } from "./ui.js";
+import {
+  el,
+  clearNode,
+  showMensaje,
+  confirmar,
+  botonIcono,
+  crearInputConAutocompletado,
+  mismoNombre,
+} from "./ui.js";
 import { fetchProductos, crearProducto, actualizarProducto, eliminarProducto, fetchTiposProducto } from "./db.js";
 
 const SIN_TIPO_VALOR = "";
@@ -36,10 +44,20 @@ export async function renderProductos(container) {
     return select;
   }
 
-  const inputNuevo = el("input", { type: "text", placeholder: "Nombre del producto (ej: Leche)" });
+  /* ---------- Alta de producto, con autocompletado para no duplicar ---------- */
+  // Mientras se escribe se sugieren los productos ya cargados (igual que en las
+  // listas). Si el nombre coincide con uno existente no se crea de nuevo: se
+  // avisa y se deja el que ya estaba.
   const selectNuevoTipo = crearSelectTipo(null);
-  const botonNuevo = el("button", { class: "btn btn--primario", type: "button" }, "Agregar producto");
-  const formNuevo = el("div", { class: "form-agregar" }, [inputNuevo, selectNuevoTipo, botonNuevo]);
+
+  const { nodo: formNuevo, input: inputNuevo } = crearInputConAutocompletado({
+    placeholder: "Nombre del producto (ej: Leche)",
+    textoBoton: "Agregar producto",
+    extras: [selectNuevoTipo],
+    getSugerencias: (texto) =>
+      productosCargados.filter((p) => p.nombre.toLowerCase().includes(texto.toLowerCase())),
+    onSubmit: (texto) => agregar(texto),
+  });
 
   /* ---------- Filtro por tipo de producto ---------- */
   // Además de los tipos cargados, incluye "Todos los tipos" (sin filtrar) y
@@ -150,24 +168,35 @@ export async function renderProductos(container) {
     return li;
   }
 
-  async function agregar() {
-    const nombre = inputNuevo.value.trim();
+  async function agregar(textoIngresado) {
+    const nombre = (textoIngresado ?? inputNuevo.value).trim();
     if (!nombre) return;
+
+    // Si ya existe un producto con ese nombre (sin importar mayúsculas ni
+    // acentos), no se crea otro: se avisa y se limpia el formulario.
+    const existente = productosCargados.find((p) => mismoNombre(p.nombre, nombre));
+    if (existente) {
+      showMensaje(mensajeBox, `"${existente.nombre}" ya está en el catálogo.`, "info");
+      selectNuevoTipo.value = SIN_TIPO_VALOR;
+      // Deja el filtro donde se ve el producto que ya existía.
+      selectFiltroTipo.value = existente.tipo_producto_id != null
+        ? String(existente.tipo_producto_id)
+        : FILTRO_SIN_TIPO;
+      pintarLista();
+      return;
+    }
+
     const tipoSeleccionado = selectNuevoTipo.value ? Number(selectNuevoTipo.value) : null;
     try {
       await crearProducto(nombre, tipoSeleccionado);
+      clearNode(mensajeBox);
       inputNuevo.value = "";
       selectNuevoTipo.value = SIN_TIPO_VALOR;
       await cargar();
     } catch (err) {
-      showMensaje(mensajeBox, "No se pudo crear el producto (¿ya existe?): " + err.message);
+      showMensaje(mensajeBox, "No se pudo crear el producto: " + err.message);
     }
   }
-
-  botonNuevo.addEventListener("click", agregar);
-  inputNuevo.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") agregar();
-  });
 
   await cargar();
 }
