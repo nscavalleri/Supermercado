@@ -7,7 +7,7 @@ import { supabase } from "./supabaseClient.js";
 export async function fetchProductos() {
   const { data, error } = await supabase
     .from("productos")
-    .select("id, nombre, tipo_producto_id, tipo_producto:tipos_producto(id, nombre)")
+    .select("id, nombre, tipo_producto_id, tipo_producto:tipos_producto(id, nombre, perecedero)")
     .order("nombre", { ascending: true });
   if (error) throw error;
   return data;
@@ -20,7 +20,7 @@ export async function crearProducto(nombre, tipoProductoId = null) {
   const { data, error } = await supabase
     .from("productos")
     .insert({ nombre: nombre.trim(), tipo_producto_id: tipoProductoId })
-    .select("id, nombre, tipo_producto_id, tipo_producto:tipos_producto(id, nombre)")
+    .select("id, nombre, tipo_producto_id, tipo_producto:tipos_producto(id, nombre, perecedero)")
     .single();
   if (error) throw error;
   return data;
@@ -36,9 +36,10 @@ export async function actualizarProducto(id, nombre, tipoProductoId = null) {
 
 // Dónde se está usando un producto: listas de compra y comidas (como
 // ingrediente). Se usa para avisar antes de eliminarlo.
-// Devuelve { enOnline, supermercados: [nombres], comidas: [{ nombre, enMenu }] }.
+// Devuelve { enOnline, supermercados: [nombres], comidas: [{ nombre, enMenu }],
+//            stock: [{ fecha_vencimiento, cantidad }] }.
 export async function fetchUsosProducto(productoId) {
-  const [online, presencial, ingredientes] = await Promise.all([
+  const [online, presencial, ingredientes, stock] = await Promise.all([
     supabase.from("lista_online").select("id").eq("producto_id", productoId),
     supabase
       .from("lista_presencial")
@@ -48,8 +49,13 @@ export async function fetchUsosProducto(productoId) {
       .from("comida_ingredientes")
       .select("id, comida:comidas(id, nombre, menu:menu_semanal(id))")
       .eq("producto_id", productoId),
+    supabase
+      .from("stock")
+      .select("id, fecha_vencimiento, cantidad")
+      .eq("producto_id", productoId)
+      .order("fecha_vencimiento", { ascending: true }),
   ]);
-  for (const r of [online, presencial, ingredientes]) if (r.error) throw r.error;
+  for (const r of [online, presencial, ingredientes, stock]) if (r.error) throw r.error;
 
   const porNombre = (a, b) => a.localeCompare(b, "es", { sensitivity: "base" });
   const supermercados = [
@@ -60,14 +66,14 @@ export async function fetchUsosProducto(productoId) {
     .map((f) => ({ nombre: f.comida.nombre, enMenu: (f.comida.menu || []).length > 0 }))
     .sort((a, b) => porNombre(a.nombre, b.nombre));
 
-  return { enOnline: (online.data || []).length > 0, supermercados, comidas };
+  return { enOnline: (online.data || []).length > 0, supermercados, comidas, stock: stock.data || [] };
 }
 
 // Antes de borrar el producto se lo quita explícitamente de las listas y de
 // los ingredientes de las comidas, para no depender de cómo estén definidas
 // las FK en la base (sin cascada, el delete fallaría por estar en uso).
 export async function eliminarProducto(id) {
-  for (const tabla of ["lista_online", "lista_presencial", "comida_ingredientes"]) {
+  for (const tabla of ["lista_online", "lista_presencial", "comida_ingredientes", "stock"]) {
     const { error: errorUso } = await supabase.from(tabla).delete().eq("producto_id", id);
     if (errorUso) throw errorUso;
   }
@@ -114,16 +120,17 @@ export async function buscarOCrearProducto(nombreIngresado) {
 export async function fetchTiposProducto() {
   const { data, error } = await supabase
     .from("tipos_producto")
-    .select("id, nombre")
+    .select("id, nombre, perecedero")
     .order("nombre", { ascending: true });
   if (error) throw error;
   return data;
 }
 
-export async function crearTipoProducto(nombre) {
+// perecedero: true/false (columna tipos_producto.perecedero, por defecto false).
+export async function crearTipoProducto(nombre, perecedero = false) {
   const { data, error } = await supabase
     .from("tipos_producto")
-    .insert({ nombre: nombre.trim() })
+    .insert({ nombre: nombre.trim(), perecedero })
     .select()
     .single();
   if (error) throw error;
@@ -132,6 +139,11 @@ export async function crearTipoProducto(nombre) {
 
 export async function actualizarTipoProducto(id, nombre) {
   const { error } = await supabase.from("tipos_producto").update({ nombre: nombre.trim() }).eq("id", id);
+  if (error) throw error;
+}
+
+export async function actualizarPerecederoTipo(id, perecedero) {
+  const { error } = await supabase.from("tipos_producto").update({ perecedero }).eq("id", id);
   if (error) throw error;
 }
 
@@ -383,6 +395,63 @@ export async function agregarComidaAlMenu(diaId, momentoId, comidaId) {
 
 export async function quitarComidaDelMenu(id) {
   const { error } = await supabase.from("menu_semanal").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/* ---------- Stock (productos en casa, con fecha de vencimiento y cantidad) ---------- */
+// Un mismo producto puede estar varias veces si vence en fechas distintas; para
+// la misma fecha hay una sola fila (UNIQUE producto_id + fecha_vencimiento) y
+// agregar de nuevo suma la cantidad. Consumirlo (tildar) borra la fila.
+
+export async function fetchStock() {
+  const { data, error } = await supabase
+    .from("stock")
+    .select("id, fecha_vencimiento, cantidad, producto:productos(id, nombre)")
+    .order("fecha_vencimiento", { ascending: true });
+  if (error) throw error;
+  return data || [];
+}
+
+// fechaVencimiento en formato "AAAA-MM-DD" (lo que devuelve un <input type="date">).
+// Devuelve { sumado: true/false, cantidad: total que quedó }.
+export async function agregarStock(productoId, fechaVencimiento, cantidad) {
+  async function sumarAExistente() {
+    const { data: existente, error } = await supabase
+      .from("stock")
+      .select("id, cantidad")
+      .eq("producto_id", productoId)
+      .eq("fecha_vencimiento", fechaVencimiento)
+      .maybeSingle();
+    if (error) throw error;
+    if (!existente) return null;
+    const total = existente.cantidad + cantidad;
+    const { error: errorUpdate } = await supabase.from("stock").update({ cantidad: total }).eq("id", existente.id);
+    if (errorUpdate) throw errorUpdate;
+    return { sumado: true, cantidad: total };
+  }
+
+  const sumado = await sumarAExistente();
+  if (sumado) return sumado;
+
+  const { error } = await supabase
+    .from("stock")
+    .insert({ producto_id: productoId, fecha_vencimiento: fechaVencimiento, cantidad });
+  if (!error) return { sumado: false, cantidad };
+  // 23505 = justo otra pestaña creó la misma fila recién: se suma a esa.
+  if (error.code === "23505") {
+    const reintento = await sumarAExistente();
+    if (reintento) return reintento;
+  }
+  throw error;
+}
+
+export async function actualizarCantidadStock(id, cantidad) {
+  const { error } = await supabase.from("stock").update({ cantidad }).eq("id", id);
+  if (error) throw error;
+}
+
+export async function eliminarItemStock(id) {
+  const { error } = await supabase.from("stock").delete().eq("id", id);
   if (error) throw error;
 }
 

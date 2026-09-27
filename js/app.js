@@ -13,6 +13,7 @@ import { renderSupermercados } from "./supermercados.js";
 import { renderTiposProducto } from "./tiposProducto.js";
 import { renderConfigMenu } from "./configMenu.js";
 import { renderMenu } from "./menu.js";
+import { renderStock } from "./stock.js";
 import { renderListaOnline } from "./listaOnline.js";
 import { renderPresencial, resetSeleccionPresencial } from "./listaPresencial.js";
 
@@ -87,11 +88,13 @@ onAuthStateChange((session) => {
 const botonesTab = {
   lista: document.getElementById("btn-tab-lista"),
   menu: document.getElementById("btn-tab-menu"),
+  stock: document.getElementById("btn-tab-stock"),
   configuracion: document.getElementById("btn-tab-configuracion"),
 };
 const panelesTab = {
   lista: document.getElementById("tab-lista"),
   menu: document.getElementById("tab-menu"),
+  stock: document.getElementById("tab-stock"),
   configuracion: document.getElementById("tab-configuracion"),
 };
 
@@ -103,6 +106,7 @@ function activarTab(tab) {
 
   if (tab === "lista") activarSubtabLista(subtabListaActiva);
   else if (tab === "menu") renderMenu(panelesTab.menu);
+  else if (tab === "stock") renderStock(document.getElementById("panel-stock"));
   else activarSubtabConfiguracion(subtabConfigActiva);
 }
 

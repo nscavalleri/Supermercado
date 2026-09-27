@@ -182,12 +182,14 @@ export function crearInputConAutocompletado({
   return { nodo: fila, input };
 }
 
-/* ---------- Modal de confirmación (reemplaza al confirm() del navegador) ---------- */
+/* ---------- Modales (reemplazan al confirm() del navegador) ---------- */
 // El confirm() nativo se ve como un recuadro del sistema (negro en modo
-// oscuro) y no se puede estilizar, así que todas las confirmaciones de la app
-// usan este modal con el diseño de la app.
+// oscuro) y no se puede estilizar, así que todos los modales de la app se
+// arman acá, con el diseño de la app. Hay dos:
+//   - confirmar(): pregunta sí/no (ej: "¿Eliminar X?").
+//   - abrirFormularioModal(): un formulario (ej: "Agregar stock").
 
-// Lista con viñetas para mostrar adentro del modal, cortando en `max` para
+// Lista con viñetas para mostrar adentro de un modal, cortando en `max` para
 // que un tipo con muchísimos productos no genere un modal kilométrico.
 export function listaParaAviso(textos, max = 15) {
   const visibles = textos.slice(0, max);
@@ -198,7 +200,46 @@ export function listaParaAviso(textos, max = 15) {
   ]);
 }
 
-// Abre el modal y devuelve una promesa: true si se tocó el botón de aceptar,
+// Base común de los modales: arma el fondo oscuro, el recuadro con título y
+// ✕, y los botones. Cancelar, la ✕, tocar afuera o Escape llaman a onCancelar.
+function montarModal({ titulo, cuerpo, botonAceptar, textoCancelar, onCancelar }) {
+  const focoAnterior = document.activeElement;
+  const botonCerrar = el("button", { class: "modal__cerrar", type: "button", "aria-label": "Cerrar" }, "✕");
+  const botonCancelar = el("button", { class: "btn btn--secundario", type: "button" }, textoCancelar);
+  const caja = el("div", { class: "modal", role: "dialog", "aria-modal": "true", "aria-labelledby": "modal-titulo" }, [
+    el("div", { class: "modal__encabezado" }, [el("h3", { id: "modal-titulo", class: "modal__titulo" }, titulo), botonCerrar]),
+    cuerpo,
+    el("div", { class: "modal__acciones" }, [botonCancelar, botonAceptar]),
+  ]);
+  const overlay = el("div", { class: "modal-overlay" }, [caja]);
+
+  function cerrar() {
+    document.removeEventListener("keydown", onTecla);
+    overlay.remove();
+    document.body.classList.remove("con-modal");
+    if (focoAnterior && focoAnterior.focus) focoAnterior.focus();
+  }
+  function onTecla(e) {
+    if (e.key === "Escape") onCancelar();
+  }
+
+  botonCerrar.addEventListener("click", onCancelar);
+  botonCancelar.addEventListener("click", onCancelar);
+  // Tocar el fondo oscuro (fuera del recuadro) cancela.
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) onCancelar();
+  });
+  document.addEventListener("keydown", onTecla);
+
+  document.body.appendChild(overlay);
+  document.body.classList.add("con-modal");
+  return { cerrar, botonCancelar };
+}
+
+const aNodos = (contenido) =>
+  (Array.isArray(contenido) ? contenido : [contenido]).map((m) => (typeof m === "string" ? el("p", {}, m) : m));
+
+// Pregunta sí/no. Devuelve una promesa: true si se tocó el botón de aceptar,
 // false si se canceló (botón Cancelar, la ✕, tocar afuera o la tecla Escape).
 //   titulo:       título del modal (ej: "Eliminar producto")
 //   mensaje:      texto o nodo(s) del cuerpo (acepta un array de nodos)
@@ -215,49 +256,146 @@ export function confirmar(opciones) {
   } = typeof opciones === "string" ? { mensaje: opciones } : opciones;
 
   return new Promise((resolve) => {
-    const focoAnterior = document.activeElement;
-    const botonCerrar = el("button", { class: "modal__cerrar", type: "button", "aria-label": "Cerrar" }, "✕");
-    const botonCancelar = el("button", { class: "btn btn--secundario", type: "button" }, textoCancelar);
     const botonAceptar = el(
       "button",
       { class: `btn ${peligro ? "btn--peligro-lleno" : "btn--primario"}`, type: "button" },
       textoAceptar
     );
-    const cuerpo = el(
-      "div",
-      { class: "modal__cuerpo" },
-      (Array.isArray(mensaje) ? mensaje : [mensaje]).map((m) => (typeof m === "string" ? el("p", {}, m) : m))
-    );
-    const caja = el("div", { class: "modal", role: "dialog", "aria-modal": "true", "aria-labelledby": "modal-titulo" }, [
-      el("div", { class: "modal__encabezado" }, [el("h3", { id: "modal-titulo", class: "modal__titulo" }, titulo), botonCerrar]),
-      cuerpo,
-      el("div", { class: "modal__acciones" }, [botonCancelar, botonAceptar]),
-    ]);
-    const overlay = el("div", { class: "modal-overlay" }, [caja]);
-
-    function cerrar(resultado) {
-      document.removeEventListener("keydown", onTecla);
-      overlay.remove();
-      document.body.classList.remove("con-modal");
-      if (focoAnterior && focoAnterior.focus) focoAnterior.focus();
-      resolve(resultado);
-    }
-    function onTecla(e) {
-      if (e.key === "Escape") cerrar(false);
-    }
-
-    botonCerrar.addEventListener("click", () => cerrar(false));
-    botonCancelar.addEventListener("click", () => cerrar(false));
-    botonAceptar.addEventListener("click", () => cerrar(true));
-    // Tocar el fondo oscuro (fuera del recuadro) cancela.
-    overlay.addEventListener("click", (e) => {
-      if (e.target === overlay) cerrar(false);
+    const modal = montarModal({
+      titulo,
+      cuerpo: el("div", { class: "modal__cuerpo" }, aNodos(mensaje)),
+      botonAceptar,
+      textoCancelar,
+      onCancelar: () => {
+        modal.cerrar();
+        resolve(false);
+      },
     });
-    document.addEventListener("keydown", onTecla);
-
-    document.body.appendChild(overlay);
-    document.body.classList.add("con-modal");
+    botonAceptar.addEventListener("click", () => {
+      modal.cerrar();
+      resolve(true);
+    });
     // El foco arranca en Cancelar: un Enter apurado no borra nada.
-    botonCancelar.focus();
+    modal.botonCancelar.focus();
   });
+}
+
+// Modal con un formulario. `campos` son los nodos del formulario (labels,
+// inputs...). Al tocar el botón de aceptar (o Enter) se llama a guardar():
+//   - si devuelve un texto, es un error: se muestra arriba del formulario y
+//     el modal queda abierto, con lo que se había escrito;
+//   - si no devuelve nada, se cierra.
+// Devuelve una promesa que se resuelve en true si se guardó, false si se canceló.
+export function abrirFormularioModal({ titulo, campos, textoAceptar = "Guardar", textoCancelar = "Cancelar", guardar }) {
+  return new Promise((resolve) => {
+    const errorBox = el("div", { class: "mensaje-box" });
+    const botonAceptar = el("button", { class: "btn btn--primario", type: "submit" }, textoAceptar);
+    // novalidate: la validación la hace guardar(), con mensajes en castellano
+    // y con el diseño de la app, en vez de los globitos del navegador.
+    const form = el("form", { class: "modal__cuerpo modal__form", novalidate: true }, [errorBox, ...aNodos(campos)]);
+    // El botón de aceptar está fuera del <form> (en la fila de botones), así
+    // que se lo asocia al form por id para que Enter y el click lo envíen.
+    const formId = "modal-form-" + Date.now();
+    form.id = formId;
+    botonAceptar.setAttribute("form", formId);
+
+    const modal = montarModal({
+      titulo,
+      cuerpo: form,
+      botonAceptar,
+      textoCancelar,
+      onCancelar: () => {
+        modal.cerrar();
+        resolve(false);
+      },
+    });
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      botonAceptar.disabled = true;
+      try {
+        const error = await guardar();
+        if (error) {
+          showMensaje(errorBox, error);
+          return;
+        }
+        modal.cerrar();
+        resolve(true);
+      } catch (err) {
+        showMensaje(errorBox, "No se pudo guardar: " + err.message);
+      } finally {
+        botonAceptar.disabled = false;
+      }
+    });
+
+    // El foco arranca en el primer campo del formulario.
+    const primero = form.querySelector("input, select, textarea");
+    if (primero) primero.focus();
+  });
+}
+
+// Campo de texto con sugerencias del catálogo, para usar adentro de un
+// formulario: elegir una sugerencia solo completa el campo (no envía nada),
+// a diferencia de crearInputConAutocompletado que agrega al elegir.
+export function crearCampoAutocompletado({ placeholder, getSugerencias, id }) {
+  const wrapper = el("div", { class: "autocomplete" });
+  const input = el("input", { type: "text", class: "autocomplete__input", placeholder, autocomplete: "off", id });
+  const lista = el("ul", { class: "autocomplete__lista oculto" });
+  let resaltado = -1;
+
+  function ocultar() {
+    lista.classList.add("oculto");
+    clearNode(lista);
+    resaltado = -1;
+  }
+  function elegir(nombre) {
+    input.value = nombre;
+    ocultar();
+  }
+  function mostrar() {
+    clearNode(lista);
+    resaltado = -1;
+    const texto = input.value.trim();
+    const sugerencias = texto ? getSugerencias(texto).slice(0, 8) : [];
+    if (sugerencias.length === 0) return ocultar();
+    sugerencias.forEach((item) => {
+      const li = el("li", { class: "autocomplete__item" }, item.nombre);
+      li.addEventListener("mousedown", (e) => {
+        e.preventDefault(); // antes del blur del input
+        elegir(item.nombre);
+      });
+      lista.appendChild(li);
+    });
+    lista.classList.remove("oculto");
+  }
+
+  input.addEventListener("input", mostrar);
+  input.addEventListener("keydown", (e) => {
+    const items = Array.from(lista.children);
+    if (lista.classList.contains("oculto") || !items.length) return;
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      resaltado = e.key === "ArrowDown" ? Math.min(resaltado + 1, items.length - 1) : Math.max(resaltado - 1, 0);
+      items.forEach((it, i) => it.classList.toggle("autocomplete__item--activo", i === resaltado));
+    } else if (e.key === "Enter" && resaltado >= 0) {
+      // Enter sobre una sugerencia resaltada la elige (no envía el formulario).
+      e.preventDefault();
+      elegir(items[resaltado].textContent);
+    } else if (e.key === "Escape") {
+      // Cierra las sugerencias sin cerrar el modal.
+      e.stopPropagation();
+      ocultar();
+    }
+  });
+  // Al salir del campo se cierran las sugerencias (con una pausa corta para
+  // que un toque sobre una sugerencia llegue a registrarse), salvo que para
+  // entonces el foco ya haya vuelto al campo.
+  input.addEventListener("blur", () =>
+    setTimeout(() => {
+      if (document.activeElement !== input) ocultar();
+    }, 150)
+  );
+
+  wrapper.append(input, lista);
+  return { nodo: wrapper, input };
 }

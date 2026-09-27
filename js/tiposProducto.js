@@ -6,6 +6,7 @@ import {
   fetchTiposProducto,
   crearTipoProducto,
   actualizarTipoProducto,
+  actualizarPerecederoTipo,
   eliminarTipoProducto,
   fetchProductosPorTipo,
 } from "./db.js";
@@ -18,15 +19,20 @@ export async function renderTiposProducto(container) {
   const listaBox = el("div", { class: "lista-abm" }, "Cargando...");
 
   const inputNuevo = el("input", { type: "text", placeholder: "Nombre del tipo (ej: Lácteos)" });
+  const checkNuevoPerecedero = el("input", { type: "checkbox" });
   const botonNuevo = el("button", { class: "btn btn--primario", type: "button" }, "Agregar tipo");
-  const formNuevo = el("div", { class: "form-agregar" }, [inputNuevo, botonNuevo]);
+  const formNuevo = el("div", { class: "form-agregar" }, [
+    inputNuevo,
+    el("label", { class: "check-perecedero" }, [checkNuevoPerecedero, "Perecedero"]),
+    botonNuevo,
+  ]);
 
   container.appendChild(el("h2", {}, "Tipos de producto"));
   container.appendChild(
     el(
       "p",
       { class: "texto-ayuda" },
-      "Se usan para clasificar los productos y ordenar las listas de compra. Los productos sin tipo aparecen como \"Sin clasificar\"."
+      "Se usan para clasificar los productos y ordenar las listas de compra. Los productos sin tipo aparecen como \"Sin clasificar\". Marcá \"Perecedero\" en los tipos de productos que se vencen."
     )
   );
   container.appendChild(mensajeBox);
@@ -52,11 +58,29 @@ export async function renderTiposProducto(container) {
   function renderFila(tipo) {
     const nombreSpan = el("span", { class: "abm-lista__nombre" }, tipo.nombre);
 
+    // Perecedero sí/no: se guarda apenas se tilda o destilda.
+    const checkPerecedero = el("input", { type: "checkbox" });
+    checkPerecedero.checked = !!tipo.perecedero;
+    const labelPerecedero = el("label", { class: "check-perecedero" }, [checkPerecedero, "Perecedero"]);
+    checkPerecedero.addEventListener("change", async () => {
+      checkPerecedero.disabled = true;
+      try {
+        await actualizarPerecederoTipo(tipo.id, checkPerecedero.checked);
+        tipo.perecedero = checkPerecedero.checked;
+        clearNode(mensajeBox);
+      } catch (err) {
+        checkPerecedero.checked = !!tipo.perecedero;
+        showMensaje(mensajeBox, "No se pudo actualizar: " + err.message);
+      } finally {
+        checkPerecedero.disabled = false;
+      }
+    });
+
     const botonEditar = botonIcono("editar");
     const botonEliminar = botonIcono("eliminar");
 
     const acciones = el("div", { class: "abm-lista__acciones" }, [botonEditar, botonEliminar]);
-    const li = el("li", { class: "abm-lista__fila" }, [nombreSpan, acciones]);
+    const li = el("li", { class: "abm-lista__fila" }, [nombreSpan, labelPerecedero, acciones]);
 
     botonEditar.addEventListener("click", () => {
       const inputEdit = el("input", { type: "text", value: tipo.nombre });
@@ -118,8 +142,9 @@ export async function renderTiposProducto(container) {
     const nombre = inputNuevo.value.trim();
     if (!nombre) return;
     try {
-      await crearTipoProducto(nombre);
+      await crearTipoProducto(nombre, checkNuevoPerecedero.checked);
       inputNuevo.value = "";
+      checkNuevoPerecedero.checked = false;
       await cargar();
     } catch (err) {
       showMensaje(mensajeBox, "No se pudo crear el tipo (¿ya existe?): " + err.message);

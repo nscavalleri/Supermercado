@@ -178,6 +178,8 @@ h3 {
 input[type="text"],
 input[type="email"],
 input[type="password"],
+input[type="number"],
+input[type="date"],
 select {
   padding: 10px 12px;
   border-radius: 10px;
@@ -886,6 +888,127 @@ body.con-modal {
   background: var(--peligro-oscuro);
 }
 
+/* ---------- Formularios adentro de un modal (ver abrirFormularioModal) ---------- */
+
+.modal__campo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--texto-suave);
+}
+
+.modal__campo input {
+  width: 100%;
+  font-weight: 400;
+}
+
+.modal__campo .autocomplete {
+  width: 100%;
+}
+
+/* Las sugerencias no heredan el gris/negrita del título del campo. */
+.modal__campo .autocomplete__lista {
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--texto);
+}
+
+/* ---------- Perecedero (Configuración > Tipos de producto y Productos) ---------- */
+
+.check-perecedero {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--texto-suave);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.check-perecedero input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--celeste);
+  margin: 0;
+}
+
+/* Etiqueta "Perecedero" en la lista de productos: celeste suave, para que
+   se distinga de "No perecedero" (gris) de un vistazo. */
+.abm-lista__tipo--perecedero {
+  background: #e0f9fc;
+  color: var(--celeste-oscuro);
+}
+
+/* Etiquetas de tipo y perecedero juntas; en el celular van una arriba de la
+   otra para que los botones de editar/eliminar sigan entrando en la fila. */
+.abm-lista__etiquetas {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* En el formulario de agregar tipo, el check no se estira como los campos. */
+.form-agregar .check-perecedero input {
+  flex: none;
+  min-width: 0;
+}
+
+/* ---------- Stock ---------- */
+
+.stock__barra {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.stock__orden {
+  margin-bottom: 0;
+}
+
+.stock__fila {
+  flex-wrap: nowrap;
+}
+
+.stock__info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stock__vence {
+  font-size: 0.8rem;
+  color: var(--texto-suave);
+}
+
+.stock__vence--vencido {
+  color: var(--peligro);
+  font-weight: 600;
+}
+
+.stock__cantidad-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: var(--texto-suave);
+  flex-shrink: 0;
+}
+
+.stock__cantidad-box .stock__cantidad {
+  width: 64px;
+  padding: 6px 8px;
+  min-height: 36px;
+  text-align: center;
+}
+
 /* ---------- Responsive ---------- */
 
 @media (max-width: 480px) {
@@ -905,6 +1028,12 @@ body.con-modal {
 
   .login-card {
     padding: 24px 18px;
+  }
+
+  .abm-lista__etiquetas {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
   }
 
   /* En el celular los botones del modal ocupan todo el ancho, uno al lado

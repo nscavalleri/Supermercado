@@ -133,12 +133,20 @@ export async function renderProductos(container) {
       { class: "abm-lista__tipo" },
       producto.tipo_producto ? producto.tipo_producto.nombre : "Sin tipo"
     );
+    // Perecedero sale del tipo del producto (tipos_producto.perecedero); un
+    // producto sin tipo cuenta como no perecedero.
+    const esPerecedero = !!producto.tipo_producto?.perecedero;
+    const perecederoSpan = el(
+      "span",
+      { class: "abm-lista__tipo" + (esPerecedero ? " abm-lista__tipo--perecedero" : "") },
+      esPerecedero ? "Perecedero" : "No perecedero"
+    );
 
     const botonEditar = botonIcono("editar");
     const botonEliminar = botonIcono("eliminar");
 
     const acciones = el("div", { class: "abm-lista__acciones" }, [botonEditar, botonEliminar]);
-    const li = el("li", { class: "abm-lista__fila" }, [nombreSpan, tipoSpan, acciones]);
+    const li = el("li", { class: "abm-lista__fila" }, [nombreSpan, el("div", { class: "abm-lista__etiquetas" }, [tipoSpan, perecederoSpan]), acciones]);
 
     botonEditar.addEventListener("click", () => {
       const inputEdit = el("input", { type: "text", value: producto.nombre });
@@ -179,17 +187,24 @@ export async function renderProductos(container) {
       ];
       const enComidas = usos.comidas.map((c) => c.nombre + (c.enMenu ? " (está en el menú semanal)" : ""));
 
+      const enStock = usos.stock.map((s) => {
+        const [a, m, d] = s.fecha_vencimiento.split("-");
+        return `${s.cantidad} u. — vence el ${d}/${m}/${a}`;
+      });
+
       let mensaje;
-      if (enListas.length === 0 && enComidas.length === 0) {
-        mensaje = `¿Eliminar "${producto.nombre}"? No está en ninguna lista ni comida.`;
+      if (enListas.length === 0 && enComidas.length === 0 && enStock.length === 0) {
+        mensaje = `¿Eliminar "${producto.nombre}"? No está en ninguna lista, comida ni en el stock.`;
       } else {
         mensaje = [`El producto "${producto.nombre}" está siendo usado:`];
         if (enListas.length > 0)
           mensaje.push(el("p", { class: "modal__subtitulo" }, "En listas de compra"), listaParaAviso(enListas));
         if (enComidas.length > 0)
           mensaje.push(el("p", { class: "modal__subtitulo" }, "Como ingrediente de"), listaParaAviso(enComidas));
+        if (enStock.length > 0)
+          mensaje.push(el("p", { class: "modal__subtitulo" }, "En stock"), listaParaAviso(enStock));
         mensaje.push(
-          "Si lo eliminás, se va a quitar de esas listas y de los ingredientes de esas comidas (las comidas no se borran). ¿Eliminar igual?"
+          "Si lo eliminás, se va a quitar de todos esos lugares (las comidas no se borran, solo pierden ese ingrediente). ¿Eliminar igual?"
         );
       }
 
