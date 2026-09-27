@@ -7,7 +7,7 @@ import {
   botonIcono,
   crearInputConAutocompletado,
   mismoNombre,
-  lineasParaAviso,
+  listaParaAviso,
 } from "./ui.js";
 import {
   fetchProductos,
@@ -183,16 +183,17 @@ export async function renderProductos(container) {
       if (enListas.length === 0 && enComidas.length === 0) {
         mensaje = `¿Eliminar "${producto.nombre}"? No está en ninguna lista ni comida.`;
       } else {
-        const partes = [`El producto "${producto.nombre}" está siendo usado:`];
-        if (enListas.length > 0) partes.push("En listas de compra:\n" + lineasParaAviso(enListas));
-        if (enComidas.length > 0) partes.push("Como ingrediente de:\n" + lineasParaAviso(enComidas));
-        partes.push(
+        mensaje = [`El producto "${producto.nombre}" está siendo usado:`];
+        if (enListas.length > 0)
+          mensaje.push(el("p", { class: "modal__subtitulo" }, "En listas de compra"), listaParaAviso(enListas));
+        if (enComidas.length > 0)
+          mensaje.push(el("p", { class: "modal__subtitulo" }, "Como ingrediente de"), listaParaAviso(enComidas));
+        mensaje.push(
           "Si lo eliminás, se va a quitar de esas listas y de los ingredientes de esas comidas (las comidas no se borran). ¿Eliminar igual?"
         );
-        mensaje = partes.join("\n\n");
       }
 
-      if (!confirmar(mensaje)) return;
+      if (!(await confirmar({ titulo: "Eliminar producto", mensaje }))) return;
       try {
         await eliminarProducto(producto.id);
         await cargar();

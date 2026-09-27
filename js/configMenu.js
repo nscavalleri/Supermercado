@@ -221,7 +221,13 @@ export async function renderConfigMenu(container) {
     });
 
     botonEliminar.addEventListener("click", async () => {
-      if (!confirmar(`¿Eliminar "${comida.nombre}"? También se va a quitar del menú semanal.`)) return;
+      if (
+        !(await confirmar({
+          titulo: "Eliminar comida",
+          mensaje: `¿Eliminar "${comida.nombre}"? También se va a quitar del menú semanal.`,
+        }))
+      )
+        return;
       try {
         await eliminarComida(comida.id);
         abiertas.delete(comida.id);

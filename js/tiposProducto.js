@@ -1,7 +1,7 @@
 // Pantalla Configuración > Tipos de producto: ABM (alta, baja, modificación) del
 // catálogo de tipos de producto. Se usan para clasificar los productos y para
 // ordenar las listas de compra (primero por tipo, después alfabéticamente).
-import { el, clearNode, showMensaje, confirmar, botonIcono, lineasParaAviso } from "./ui.js";
+import { el, clearNode, showMensaje, confirmar, botonIcono, listaParaAviso } from "./ui.js";
 import {
   fetchTiposProducto,
   crearTipoProducto,
@@ -93,15 +93,16 @@ export async function renderTiposProducto(container) {
       if (productosAsociados.length === 0) {
         mensaje = `¿Eliminar "${tipo.nombre}"? No hay productos con este tipo.`;
       } else {
-        const cantidad =
-          productosAsociados.length === 1 ? "1 producto" : `${productosAsociados.length} productos`;
-        mensaje =
-          `El tipo "${tipo.nombre}" está siendo usado en ${cantidad}:\n\n` +
-          lineasParaAviso(productosAsociados.map((p) => p.nombre)) +
-          `\n\nSi lo eliminás, ${productosAsociados.length === 1 ? "ese producto va a quedar" : "esos productos van a quedar"} "Sin clasificar". ¿Eliminar igual?`;
+        const uno = productosAsociados.length === 1;
+        const cantidad = uno ? "1 producto" : `${productosAsociados.length} productos`;
+        mensaje = [
+          `El tipo "${tipo.nombre}" está siendo usado en ${cantidad}:`,
+          listaParaAviso(productosAsociados.map((p) => p.nombre)),
+          `Si lo eliminás, ${uno ? "ese producto va a quedar" : "esos productos van a quedar"} "Sin clasificar". ¿Eliminar igual?`,
+        ];
       }
 
-      if (!confirmar(mensaje)) return;
+      if (!(await confirmar({ titulo: "Eliminar tipo de producto", mensaje }))) return;
       try {
         await eliminarTipoProducto(tipo.id);
         await cargar();

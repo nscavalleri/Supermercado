@@ -762,6 +762,130 @@ select:focus {
   color: var(--celeste-oscuro);
 }
 
+/* ---------- Modal de confirmación (ver confirmar() en js/ui.js) ---------- */
+/* Reemplaza al confirm() del navegador: recuadro blanco centrado con las
+   cuatro esquinas redondeadas, sobre un fondo oscuro semitransparente. */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+/* Mientras hay un modal abierto, la página de atrás no scrollea. */
+body.con-modal {
+  overflow: hidden;
+}
+
+.modal {
+  background: var(--tarjeta);
+  color: var(--texto);
+  width: 100%;
+  max-width: 460px;
+  max-height: 80vh;
+  overflow-y: auto;
+  border-radius: 16px;
+  padding: 20px 18px 18px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+}
+
+.modal__encabezado {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.modal__titulo {
+  margin: 0 0 12px 0;
+  font-size: 1.1rem;
+}
+
+.modal__cerrar {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  line-height: 1;
+  color: var(--texto-suave);
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.modal__cerrar:hover {
+  color: var(--texto);
+}
+
+.modal__cuerpo {
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.modal__cuerpo p {
+  margin: 0 0 10px 0;
+}
+
+/* Título chico de un bloque adentro del modal ("En listas de compra"...). */
+.modal__cuerpo .modal__subtitulo {
+  margin: 12px 0 4px 0;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--texto-suave);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+/* Lista de nombres (productos, supermercados, comidas) en un recuadro gris
+   claro, para que se distinga del texto de la pregunta. */
+.modal__lista {
+  list-style: none;
+  margin: 0 0 12px 0;
+  padding: 8px 12px;
+  background: var(--fondo);
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+}
+
+.modal__lista li {
+  padding: 4px 0;
+  border-bottom: 1px solid var(--borde);
+}
+
+.modal__lista li:last-child {
+  border-bottom: none;
+}
+
+.modal__lista-resto {
+  color: var(--texto-suave);
+  font-style: italic;
+}
+
+.modal__acciones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.modal__acciones .btn {
+  min-width: 110px;
+}
+
+/* Botón "sí" de una confirmación que borra algo: rojo lleno, para que no se
+   toque de apurado creyendo que es el botón de siempre. */
+.btn--peligro-lleno {
+  background: var(--peligro);
+  color: white;
+}
+
+.btn--peligro-lleno:hover {
+  background: var(--peligro-oscuro);
+}
+
 /* ---------- Responsive ---------- */
 
 @media (max-width: 480px) {
@@ -781,5 +905,12 @@ select:focus {
 
   .login-card {
     padding: 24px 18px;
+  }
+
+  /* En el celular los botones del modal ocupan todo el ancho, uno al lado
+     del otro, así se tocan fácil con el dedo. */
+  .modal__acciones .btn {
+    flex: 1;
+    min-width: 0;
   }
 }

@@ -182,15 +182,82 @@ export function crearInputConAutocompletado({
   return { nodo: fila, input };
 }
 
-// Arma las líneas "• nombre" para un aviso de confirm(), cortando en `max`
-// (el confirm nativo no tiene scroll: con listas largas se corta en pantalla).
-export function lineasParaAviso(textos, max = 15) {
-  const visibles = textos.slice(0, max).map((t) => "• " + t);
+/* ---------- Modal de confirmación (reemplaza al confirm() del navegador) ---------- */
+// El confirm() nativo se ve como un recuadro del sistema (negro en modo
+// oscuro) y no se puede estilizar, así que todas las confirmaciones de la app
+// usan este modal con el diseño de la app.
+
+// Lista con viñetas para mostrar adentro del modal, cortando en `max` para
+// que un tipo con muchísimos productos no genere un modal kilométrico.
+export function listaParaAviso(textos, max = 15) {
+  const visibles = textos.slice(0, max);
   const resto = textos.length - visibles.length;
-  if (resto > 0) visibles.push(`… y ${resto} más`);
-  return visibles.join("\n");
+  return el("ul", { class: "modal__lista" }, [
+    ...visibles.map((t) => el("li", {}, t)),
+    resto > 0 ? el("li", { class: "modal__lista-resto" }, `… y ${resto} más`) : null,
+  ]);
 }
 
-export function confirmar(mensaje) {
-  return window.confirm(mensaje);
+// Abre el modal y devuelve una promesa: true si se tocó el botón de aceptar,
+// false si se canceló (botón Cancelar, la ✕, tocar afuera o la tecla Escape).
+//   titulo:       título del modal (ej: "Eliminar producto")
+//   mensaje:      texto o nodo(s) del cuerpo (acepta un array de nodos)
+//   textoAceptar: texto del botón de aceptar (por defecto "Eliminar")
+//   peligro:      true = botón de aceptar en rojo (acciones que borran algo)
+// También acepta un string suelto: confirmar("¿Seguro?").
+export function confirmar(opciones) {
+  const {
+    titulo = "Confirmar",
+    mensaje = "",
+    textoAceptar = "Eliminar",
+    textoCancelar = "Cancelar",
+    peligro = true,
+  } = typeof opciones === "string" ? { mensaje: opciones } : opciones;
+
+  return new Promise((resolve) => {
+    const focoAnterior = document.activeElement;
+    const botonCerrar = el("button", { class: "modal__cerrar", type: "button", "aria-label": "Cerrar" }, "✕");
+    const botonCancelar = el("button", { class: "btn btn--secundario", type: "button" }, textoCancelar);
+    const botonAceptar = el(
+      "button",
+      { class: `btn ${peligro ? "btn--peligro-lleno" : "btn--primario"}`, type: "button" },
+      textoAceptar
+    );
+    const cuerpo = el(
+      "div",
+      { class: "modal__cuerpo" },
+      (Array.isArray(mensaje) ? mensaje : [mensaje]).map((m) => (typeof m === "string" ? el("p", {}, m) : m))
+    );
+    const caja = el("div", { class: "modal", role: "dialog", "aria-modal": "true", "aria-labelledby": "modal-titulo" }, [
+      el("div", { class: "modal__encabezado" }, [el("h3", { id: "modal-titulo", class: "modal__titulo" }, titulo), botonCerrar]),
+      cuerpo,
+      el("div", { class: "modal__acciones" }, [botonCancelar, botonAceptar]),
+    ]);
+    const overlay = el("div", { class: "modal-overlay" }, [caja]);
+
+    function cerrar(resultado) {
+      document.removeEventListener("keydown", onTecla);
+      overlay.remove();
+      document.body.classList.remove("con-modal");
+      if (focoAnterior && focoAnterior.focus) focoAnterior.focus();
+      resolve(resultado);
+    }
+    function onTecla(e) {
+      if (e.key === "Escape") cerrar(false);
+    }
+
+    botonCerrar.addEventListener("click", () => cerrar(false));
+    botonCancelar.addEventListener("click", () => cerrar(false));
+    botonAceptar.addEventListener("click", () => cerrar(true));
+    // Tocar el fondo oscuro (fuera del recuadro) cancela.
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) cerrar(false);
+    });
+    document.addEventListener("keydown", onTecla);
+
+    document.body.appendChild(overlay);
+    document.body.classList.add("con-modal");
+    // El foco arranca en Cancelar: un Enter apurado no borra nada.
+    botonCancelar.focus();
+  });
 }

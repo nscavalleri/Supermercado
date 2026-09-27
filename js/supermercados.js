@@ -75,9 +75,10 @@ export async function renderSupermercados(container, onCambio) {
 
     botonEliminar.addEventListener("click", async () => {
       if (
-        !confirmar(
-          `¿Eliminar "${supermercado.nombre}"? También se va a quitar su lista presencial.`
-        )
+        !(await confirmar({
+          titulo: "Eliminar supermercado",
+          mensaje: `¿Eliminar "${supermercado.nombre}"? También se va a quitar su lista presencial.`,
+        }))
       )
         return;
       try {
