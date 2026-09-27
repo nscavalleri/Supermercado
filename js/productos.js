@@ -17,6 +17,7 @@ import {
   fetchTiposProducto,
   fetchUsosProducto,
 } from "./db.js";
+import { actualizarAvisoVencimientos } from "./avisoVencimientos.js";
 
 const SIN_TIPO_VALOR = "";
 // Valores especiales del filtro por tipo (no son ids reales de tipos_producto).
@@ -212,6 +213,8 @@ export async function renderProductos(container) {
       try {
         await eliminarProducto(producto.id);
         await cargar();
+        // Si el producto estaba en el stock, el aviso de vencimientos cambia.
+        if (usos.stock.length > 0) actualizarAvisoVencimientos();
       } catch (err) {
         showMensaje(mensajeBox, "No se pudo eliminar: " + err.message);
       }

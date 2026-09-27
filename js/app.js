@@ -14,6 +14,7 @@ import { renderTiposProducto } from "./tiposProducto.js";
 import { renderConfigMenu } from "./configMenu.js";
 import { renderMenu } from "./menu.js";
 import { renderStock } from "./stock.js";
+import { actualizarAvisoVencimientos } from "./avisoVencimientos.js";
 import { renderListaOnline } from "./listaOnline.js";
 import { renderPresencial, resetSeleccionPresencial } from "./listaPresencial.js";
 
@@ -61,6 +62,7 @@ function mostrarApp() {
   subtabConfigActiva = "productos";
   resetSeleccionPresencial();
   activarTab("lista");
+  actualizarAvisoVencimientos();
 }
 
 function mostrarLogin() {

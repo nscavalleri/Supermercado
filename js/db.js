@@ -398,6 +398,16 @@ export async function quitarComidaDelMenu(id) {
   if (error) throw error;
 }
 
+/* ---------- Configuración general (tabla "configuracion") ---------- */
+// Parámetros de la app guardados como clave/valor (texto). Se editan solo
+// desde Supabase, no desde la app: el cliente tiene permiso de lectura nomás.
+// Devuelve el valor como texto, o null si esa clave no está cargada.
+export async function fetchConfiguracion(clave) {
+  const { data, error } = await supabase.from("configuracion").select("valor").eq("clave", clave).maybeSingle();
+  if (error) throw error;
+  return data ? data.valor : null;
+}
+
 /* ---------- Stock (productos en casa, con fecha de vencimiento y cantidad) ---------- */
 // Un mismo producto puede estar varias veces si vence en fechas distintas; para
 // la misma fecha hay una sola fila (UNIQUE producto_id + fecha_vencimiento) y
@@ -443,6 +453,18 @@ export async function agregarStock(productoId, fechaVencimiento, cantidad) {
     if (reintento) return reintento;
   }
   throw error;
+}
+
+// Stock que vence hasta una fecha dada (incluye lo ya vencido). Se usa para
+// el aviso de vencimientos de arriba de la pantalla.
+export async function fetchStockPorVencer(hastaFechaISO) {
+  const { data, error } = await supabase
+    .from("stock")
+    .select("id, fecha_vencimiento, cantidad, producto:productos(id, nombre)")
+    .lte("fecha_vencimiento", hastaFechaISO)
+    .order("fecha_vencimiento", { ascending: true });
+  if (error) throw error;
+  return data || [];
 }
 
 export async function actualizarCantidadStock(id, cantidad) {

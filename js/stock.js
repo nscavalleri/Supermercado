@@ -8,6 +8,7 @@
 //   producto del stock (igual que "comprado" en las listas de compra).
 import { el, clearNode, showMensaje, abrirFormularioModal, crearCampoAutocompletado, mismoNombre } from "./ui.js";
 import { fetchStock, fetchProductos, agregarStock, actualizarCantidadStock, eliminarItemStock } from "./db.js";
+import { actualizarAvisoVencimientos } from "./avisoVencimientos.js";
 
 const ORDENES = {
   "vencimiento-asc": { texto: "Vencimiento (más próximo primero)" },
@@ -153,6 +154,7 @@ export async function renderStock(container) {
           await eliminarItemStock(item.id);
           items = items.filter((i) => i.id !== item.id);
           pintar();
+          actualizarAvisoVencimientos();
         } catch (err) {
           showMensaje(mensajeBox, "No se pudo actualizar el stock: " + err.message);
           checkbox.disabled = false;
@@ -223,6 +225,7 @@ export async function renderStock(container) {
       "info"
     );
     await cargar();
+    actualizarAvisoVencimientos();
   });
 
   await cargar();
