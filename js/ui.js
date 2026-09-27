@@ -182,6 +182,15 @@ export function crearInputConAutocompletado({
   return { nodo: fila, input };
 }
 
+// Arma las líneas "• nombre" para un aviso de confirm(), cortando en `max`
+// (el confirm nativo no tiene scroll: con listas largas se corta en pantalla).
+export function lineasParaAviso(textos, max = 15) {
+  const visibles = textos.slice(0, max).map((t) => "• " + t);
+  const resto = textos.length - visibles.length;
+  if (resto > 0) visibles.push(`… y ${resto} más`);
+  return visibles.join("\n");
+}
+
 export function confirmar(mensaje) {
   return window.confirm(mensaje);
 }

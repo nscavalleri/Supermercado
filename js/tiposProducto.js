@@ -1,13 +1,15 @@
 // Pantalla Configuración > Tipos de producto: ABM (alta, baja, modificación) del
 // catálogo de tipos de producto. Se usan para clasificar los productos y para
 // ordenar las listas de compra (primero por tipo, después alfabéticamente).
-import { el, clearNode, showMensaje, confirmar, botonIcono } from "./ui.js";
+import { el, clearNode, showMensaje, confirmar, botonIcono, lineasParaAviso } from "./ui.js";
 import {
   fetchTiposProducto,
   crearTipoProducto,
   actualizarTipoProducto,
   eliminarTipoProducto,
+  fetchProductosPorTipo,
 } from "./db.js";
+
 
 export async function renderTiposProducto(container) {
   clearNode(container);
@@ -78,12 +80,28 @@ export async function renderTiposProducto(container) {
     });
 
     botonEliminar.addEventListener("click", async () => {
-      if (
-        !confirmar(
-          `¿Eliminar "${tipo.nombre}"? Los productos que lo tengan asignado van a quedar sin clasificar.`
-        )
-      )
+      // Primero se consulta qué productos usan este tipo, para avisar con nombres.
+      let productosAsociados;
+      try {
+        productosAsociados = await fetchProductosPorTipo(tipo.id);
+      } catch (err) {
+        showMensaje(mensajeBox, "No se pudo verificar si el tipo está en uso: " + err.message);
         return;
+      }
+
+      let mensaje;
+      if (productosAsociados.length === 0) {
+        mensaje = `¿Eliminar "${tipo.nombre}"? No hay productos con este tipo.`;
+      } else {
+        const cantidad =
+          productosAsociados.length === 1 ? "1 producto" : `${productosAsociados.length} productos`;
+        mensaje =
+          `El tipo "${tipo.nombre}" está siendo usado en ${cantidad}:\n\n` +
+          lineasParaAviso(productosAsociados.map((p) => p.nombre)) +
+          `\n\nSi lo eliminás, ${productosAsociados.length === 1 ? "ese producto va a quedar" : "esos productos van a quedar"} "Sin clasificar". ¿Eliminar igual?`;
+      }
+
+      if (!confirmar(mensaje)) return;
       try {
         await eliminarTipoProducto(tipo.id);
         await cargar();

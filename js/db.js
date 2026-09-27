@@ -34,7 +34,43 @@ export async function actualizarProducto(id, nombre, tipoProductoId = null) {
   if (error) throw error;
 }
 
+// Dónde se está usando un producto: listas de compra y comidas (como
+// ingrediente). Se usa para avisar antes de eliminarlo.
+// Devuelve { enOnline, supermercados: [nombres], comidas: [{ nombre, enMenu }] }.
+export async function fetchUsosProducto(productoId) {
+  const [online, presencial, ingredientes] = await Promise.all([
+    supabase.from("lista_online").select("id").eq("producto_id", productoId),
+    supabase
+      .from("lista_presencial")
+      .select("id, supermercado:supermercados(id, nombre)")
+      .eq("producto_id", productoId),
+    supabase
+      .from("comida_ingredientes")
+      .select("id, comida:comidas(id, nombre, menu:menu_semanal(id))")
+      .eq("producto_id", productoId),
+  ]);
+  for (const r of [online, presencial, ingredientes]) if (r.error) throw r.error;
+
+  const porNombre = (a, b) => a.localeCompare(b, "es", { sensitivity: "base" });
+  const supermercados = [
+    ...new Set((presencial.data || []).map((f) => f.supermercado?.nombre).filter(Boolean)),
+  ].sort(porNombre);
+  const comidas = (ingredientes.data || [])
+    .filter((f) => f.comida)
+    .map((f) => ({ nombre: f.comida.nombre, enMenu: (f.comida.menu || []).length > 0 }))
+    .sort((a, b) => porNombre(a.nombre, b.nombre));
+
+  return { enOnline: (online.data || []).length > 0, supermercados, comidas };
+}
+
+// Antes de borrar el producto se lo quita explícitamente de las listas y de
+// los ingredientes de las comidas, para no depender de cómo estén definidas
+// las FK en la base (sin cascada, el delete fallaría por estar en uso).
 export async function eliminarProducto(id) {
+  for (const tabla of ["lista_online", "lista_presencial", "comida_ingredientes"]) {
+    const { error: errorUso } = await supabase.from(tabla).delete().eq("producto_id", id);
+    if (errorUso) throw errorUso;
+  }
   const { error } = await supabase.from("productos").delete().eq("id", id);
   if (error) throw error;
 }
@@ -99,7 +135,27 @@ export async function actualizarTipoProducto(id, nombre) {
   if (error) throw error;
 }
 
+// Productos que tienen asignado un tipo: se usa para avisar antes de eliminar el tipo.
+export async function fetchProductosPorTipo(tipoProductoId) {
+  const { data, error } = await supabase
+    .from("productos")
+    .select("id, nombre")
+    .eq("tipo_producto_id", tipoProductoId)
+    .order("nombre", { ascending: true });
+  if (error) throw error;
+  return data || [];
+}
+
+// Antes de borrar el tipo, deja sus productos sin tipo (null) de forma explícita.
+// Así quedan "Sin clasificar" sin depender de cómo esté definida la FK en la
+// base (si fuera ON DELETE CASCADE, borrar el tipo borraría los productos).
 export async function eliminarTipoProducto(id) {
+  const { error: errorDesasignar } = await supabase
+    .from("productos")
+    .update({ tipo_producto_id: null })
+    .eq("tipo_producto_id", id);
+  if (errorDesasignar) throw errorDesasignar;
+
   const { error } = await supabase.from("tipos_producto").delete().eq("id", id);
   if (error) throw error;
 }

@@ -7,8 +7,16 @@ import {
   botonIcono,
   crearInputConAutocompletado,
   mismoNombre,
+  lineasParaAviso,
 } from "./ui.js";
-import { fetchProductos, crearProducto, actualizarProducto, eliminarProducto, fetchTiposProducto } from "./db.js";
+import {
+  fetchProductos,
+  crearProducto,
+  actualizarProducto,
+  eliminarProducto,
+  fetchTiposProducto,
+  fetchUsosProducto,
+} from "./db.js";
 
 const SIN_TIPO_VALOR = "";
 // Valores especiales del filtro por tipo (no son ids reales de tipos_producto).
@@ -156,7 +164,35 @@ export async function renderProductos(container) {
     });
 
     botonEliminar.addEventListener("click", async () => {
-      if (!confirmar(`¿Eliminar "${producto.nombre}"? También se va a quitar de todas las listas.`)) return;
+      // Primero se consulta dónde se usa el producto, para avisar con detalle.
+      let usos;
+      try {
+        usos = await fetchUsosProducto(producto.id);
+      } catch (err) {
+        showMensaje(mensajeBox, "No se pudo verificar si el producto está en uso: " + err.message);
+        return;
+      }
+
+      const enListas = [
+        ...(usos.enOnline ? ["Lista online"] : []),
+        ...usos.supermercados.map((s) => "Lista presencial: " + s),
+      ];
+      const enComidas = usos.comidas.map((c) => c.nombre + (c.enMenu ? " (está en el menú semanal)" : ""));
+
+      let mensaje;
+      if (enListas.length === 0 && enComidas.length === 0) {
+        mensaje = `¿Eliminar "${producto.nombre}"? No está en ninguna lista ni comida.`;
+      } else {
+        const partes = [`El producto "${producto.nombre}" está siendo usado:`];
+        if (enListas.length > 0) partes.push("En listas de compra:\n" + lineasParaAviso(enListas));
+        if (enComidas.length > 0) partes.push("Como ingrediente de:\n" + lineasParaAviso(enComidas));
+        partes.push(
+          "Si lo eliminás, se va a quitar de esas listas y de los ingredientes de esas comidas (las comidas no se borran). ¿Eliminar igual?"
+        );
+        mensaje = partes.join("\n\n");
+      }
+
+      if (!confirmar(mensaje)) return;
       try {
         await eliminarProducto(producto.id);
         await cargar();
