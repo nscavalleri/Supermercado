@@ -310,7 +310,7 @@ export async function fetchComidas() {
   const { data, error } = await supabase
     .from("comidas")
     .select(
-      "id, nombre, tipo_comida_id, tipo_comida:tipos_comida(id, nombre), ingredientes:comida_ingredientes(id, producto:productos(id, nombre))"
+      "id, nombre, tipo_comida_id, repetible, tipo_comida:tipos_comida(id, nombre), ingredientes:comida_ingredientes(id, producto:productos(id, nombre))"
     )
     .order("nombre", { ascending: true });
   if (error) throw error;
@@ -324,11 +324,13 @@ export async function fetchComidas() {
   }));
 }
 
-export async function crearComida(nombre, tipoComidaId = null) {
+// repetible: si la comida puede estar más de una vez en el menú de la semana
+// (columna comidas.repetible, por defecto false).
+export async function crearComida(nombre, tipoComidaId = null, repetible = false) {
   const { data, error } = await supabase
     .from("comidas")
-    .insert({ nombre: nombre.trim(), tipo_comida_id: tipoComidaId })
-    .select("id, nombre, tipo_comida_id")
+    .insert({ nombre: nombre.trim(), tipo_comida_id: tipoComidaId, repetible })
+    .select("id, nombre, tipo_comida_id, repetible")
     .single();
   if (error) throw error;
   return data;
@@ -342,9 +344,9 @@ export async function actualizarComida(id, nombre, tipoComidaId = null) {
   if (error) throw error;
 }
 
-// Crea una comida nueva copiando el tipo y los ingredientes de otra.
-export async function duplicarComida(nombre, tipoComidaId, productoIds) {
-  const creada = await crearComida(nombre, tipoComidaId);
+// Crea una comida nueva copiando el tipo, si es repetible y los ingredientes de otra.
+export async function duplicarComida(nombre, tipoComidaId, productoIds, repetible = false) {
+  const creada = await crearComida(nombre, tipoComidaId, repetible);
   if (productoIds.length > 0) {
     const { error } = await supabase
       .from("comida_ingredientes")
@@ -352,6 +354,11 @@ export async function duplicarComida(nombre, tipoComidaId, productoIds) {
     if (error) throw error;
   }
   return creada;
+}
+
+export async function actualizarRepetibleComida(id, repetible) {
+  const { error } = await supabase.from("comidas").update({ repetible }).eq("id", id);
+  if (error) throw error;
 }
 
 export async function eliminarComida(id) {

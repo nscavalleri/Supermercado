@@ -14,6 +14,7 @@ import {
   fetchComidas,
   crearComida,
   actualizarComida,
+  actualizarRepetibleComida,
   eliminarComida,
   duplicarComida,
   agregarIngrediente,
@@ -80,11 +81,12 @@ export async function renderConfigMenu(container) {
   }
 
   const selectNuevoTipo = crearSelectTipo(null);
+  const checkNuevaRepetible = el("input", { type: "checkbox" });
 
   const { nodo: formNueva, input: inputNueva } = crearInputConAutocompletado({
     placeholder: "Nombre de la comida (ej: Milanesa con puré)",
     textoBoton: "Agregar comida",
-    extras: [selectNuevoTipo],
+    extras: [selectNuevoTipo, el("label", { class: "check-perecedero" }, [checkNuevaRepetible, "Repetible"])],
     getSugerencias: (texto) =>
       comidas.filter((c) => c.nombre.toLowerCase().includes(texto.toLowerCase())),
     onSubmit: (texto) => agregarComida(texto),
@@ -95,7 +97,7 @@ export async function renderConfigMenu(container) {
     el(
       "p",
       { class: "texto-ayuda" },
-      "Cargá acá cada comida con los productos que lleva. Después, desde la solapa Menú, las asignás a los días de la semana."
+      "Cargá acá cada comida con los productos que lleva. Después, desde la solapa Menú, las asignás a los días de la semana. Tildá \"Repetible\" en las comidas que pueden aparecer más de una vez en la semana."
     )
   );
   container.appendChild(mensajeBox);
@@ -144,6 +146,28 @@ export async function renderConfigMenu(container) {
       cantidad === 0 ? "Sin ingredientes" : cantidad === 1 ? "1 ingrediente" : `${cantidad} ingredientes`
     );
 
+    // Repetible sí/no: se guarda apenas se tilda o destilda.
+    const checkRepetible = el("input", { type: "checkbox" });
+    checkRepetible.checked = !!comida.repetible;
+    const labelRepetible = el(
+      "label",
+      { class: "check-perecedero", title: "Si está tildado, la comida puede estar más de una vez en el menú de la semana" },
+      [checkRepetible, "Repetible"]
+    );
+    checkRepetible.addEventListener("change", async () => {
+      checkRepetible.disabled = true;
+      try {
+        await actualizarRepetibleComida(comida.id, checkRepetible.checked);
+        comida.repetible = checkRepetible.checked;
+        clearNode(mensajeBox);
+      } catch (err) {
+        checkRepetible.checked = !!comida.repetible;
+        showMensaje(mensajeBox, "No se pudo actualizar: " + err.message);
+      } finally {
+        checkRepetible.disabled = false;
+      }
+    });
+
     const abierta = abiertas.has(comida.id);
     const botonDetalle = el(
       "button",
@@ -163,7 +187,7 @@ export async function renderConfigMenu(container) {
       botonEditar,
       botonEliminar,
     ]);
-    const cabecera = el("div", { class: "comida__cabecera" }, [nombreSpan, tipoSpan, contador, acciones]);
+    const cabecera = el("div", { class: "comida__cabecera" }, [nombreSpan, tipoSpan, contador, labelRepetible, acciones]);
     const li = el("li", { class: "abm-lista__fila abm-lista__fila--bloque" }, [cabecera]);
 
     if (abierta) li.appendChild(renderIngredientes(comida));
@@ -210,7 +234,12 @@ export async function renderConfigMenu(container) {
     botonDuplicar.addEventListener("click", async () => {
       try {
         const productoIds = comida.ingredientes.map((i) => i.producto?.id).filter(Boolean);
-        const copia = await duplicarComida(nombreParaCopia(comida.nombre), comida.tipo_comida_id, productoIds);
+        const copia = await duplicarComida(
+          nombreParaCopia(comida.nombre),
+          comida.tipo_comida_id,
+          productoIds,
+          !!comida.repetible
+        );
         clearNode(mensajeBox);
         // Se abre sola, lista para retocarle el nombre o los ingredientes.
         abiertas.add(copia.id);
@@ -333,9 +362,10 @@ export async function renderConfigMenu(container) {
     }
     const tipoElegido = selectNuevoTipo.value ? Number(selectNuevoTipo.value) : null;
     try {
-      const creada = await crearComida(nombre, tipoElegido);
+      const creada = await crearComida(nombre, tipoElegido, checkNuevaRepetible.checked);
       clearNode(mensajeBox);
       inputNueva.value = "";
+      checkNuevaRepetible.checked = false;
       // Se abre sola para poder cargarle los ingredientes enseguida.
       abiertas.add(creada.id);
       await cargar();

@@ -59,6 +59,23 @@ export async function renderMenu(container) {
   // Tipo elegido en el filtro del slot que se está editando.
   let filtroTipoSlot = FILTRO_TODOS;
 
+  // Dónde está una comida en el menú de la semana: ["el Lunes (Cena)", ...].
+  function dondeEsta(comidaId) {
+    return menu
+      .filter((m) => m.comida?.id === comidaId)
+      .map((m) => {
+        const dia = dias.find((d) => d.id === m.dia_id);
+        const momento = momentos.find((x) => x.id === m.momento_id);
+        return `el ${dia ? dia.nombre : "?"} (${momento ? momento.nombre : "?"})`;
+      });
+  }
+
+  // Una comida NO repetible (Configuración > Menú) solo puede estar una vez en
+  // toda la semana: si ya está en algún día/momento, no se puede agregar.
+  function bloqueadaPorRepeticion(comida) {
+    return !comida.repetible && menu.some((m) => m.comida?.id === comida.id);
+  }
+
   try {
     [dias, momentos, menu, comidas, tiposComida, supermercados] = await Promise.all([
       fetchDiasSemana(),
@@ -88,9 +105,20 @@ export async function renderMenu(container) {
     pintar();
   }
 
+  // Campo que tiene que quedar con el foco después de volver a dibujar (el
+  // desplegable de comidas del slot que se está editando).
+  let focoPendiente = null;
+  let enfocarSlot = false;
+
   function pintar() {
-    clearNode(contenido);
+    // Toda la grilla se vuelve a dibujar de cero. Antes, al vaciarla, la
+    // página quedaba un instante sin contenido y el navegador la subía de
+    // golpe (se "volvía para arriba" al tocar "+ Agregar comida"). Ahora se
+    // arma aparte, se reemplaza de una sola vez y se deja el scroll donde
+    // estaba.
+    const scrollAntes = window.scrollY;
     const hoy = diaDeHoy();
+    const nuevo = document.createDocumentFragment();
 
     ordenDesdeHoy(dias).forEach((dia) => {
       const titulo = el("h3", { class: "dia__titulo" }, dia.nombre);
@@ -98,8 +126,19 @@ export async function renderMenu(container) {
 
       const caja = el("section", { class: "dia" }, [titulo]);
       momentos.forEach((momento) => caja.appendChild(renderMomento(dia, momento)));
-      contenido.appendChild(caja);
+      nuevo.appendChild(caja);
     });
+
+    contenido.replaceChildren(nuevo);
+    window.scrollTo(0, scrollAntes);
+
+    if (focoPendiente) {
+      const campo = focoPendiente;
+      focoPendiente = null;
+      campo.focus({ preventScroll: true });
+      // Por si el desplegable quedó fuera de la pantalla, se lo acerca lo justo.
+      campo.scrollIntoView({ block: "nearest" });
+    }
   }
 
   function renderMomento(dia, momento) {
@@ -296,6 +335,7 @@ export async function renderMenu(container) {
       const boton = el("button", { class: "btn btn--secundario btn--chico", type: "button" }, "+ Agregar comida");
       boton.addEventListener("click", () => {
         slotAgregando = clave;
+        enfocarSlot = true;
         filtroTipoSlot = FILTRO_TODOS;
         panelIngredientes = null;
         pintar();
@@ -335,15 +375,25 @@ export async function renderMenu(container) {
           ? disponibles
           : disponibles.filter((c) => String(c.tipo_comida_id) === filtroTipoSlot);
 
-      if (filtradas.length === 0) {
+      // Las comidas que no son repetibles y ya están en otro día/momento de
+      // la semana se muestran igual, pero deshabilitadas y diciendo dónde
+      // están, para que se entienda por qué no se pueden elegir.
+      const habilitadas = filtradas.filter((c) => !bloqueadaPorRepeticion(c));
+
+      if (habilitadas.length === 0) {
         const texto =
-          disponibles.length === 0 ? "Ya están todas agregadas" : "No hay comidas de ese tipo";
+          filtradas.length > 0 || disponibles.length === 0
+            ? "Ya están todas agregadas"
+            : "No hay comidas de ese tipo";
         select.appendChild(el("option", { value: "" }, texto));
-        select.disabled = true;
-      } else {
-        select.disabled = false;
-        filtradas.forEach((c) => select.appendChild(el("option", { value: String(c.id) }, c.nombre)));
       }
+      select.disabled = habilitadas.length === 0;
+      filtradas.forEach((c) => {
+        const bloqueada = bloqueadaPorRepeticion(c);
+        const texto = bloqueada ? `${c.nombre} — ya está ${dondeEsta(c.id)[0]}` : c.nombre;
+        select.appendChild(el("option", { value: String(c.id), disabled: bloqueada }, texto));
+      });
+      if (habilitadas.length > 0) select.value = String(habilitadas[0].id);
     }
     opcionesComida();
 
@@ -351,6 +401,14 @@ export async function renderMenu(container) {
       filtroTipoSlot = selectTipo.value;
       opcionesComida();
     });
+
+    // Recién abierto el selector, el foco queda en el desplegable de comidas
+    // (ver pintar()). Solo esa vez: si después se redibuja por otra cosa, no
+    // se le vuelve a robar el foco a lo que se esté usando.
+    if (enfocarSlot) {
+      focoPendiente = select;
+      enfocarSlot = false;
+    }
 
     const aceptar = botonIcono("guardar", "Agregar al menú");
     const cancelar = botonIcono("cancelar", "Cancelar");
@@ -362,6 +420,19 @@ export async function renderMenu(container) {
         return;
       }
       try {
+        // Se vuelve a leer el menú antes de agregar, por si mientras tanto la
+        // otra persona cargó esa misma comida en otro día.
+        menu = await fetchMenuSemanal();
+        const comida = comidas.find((c) => c.id === Number(select.value));
+        if (comida && bloqueadaPorRepeticion(comida)) {
+          showMensaje(
+            mensajeBox,
+            `"${comida.nombre}" no es repetible y ya está en el menú ${dondeEsta(comida.id).join(", ")}. ` +
+              `Si querés poder repetirla, tildá "Repetible" en Configuración > Menú.`
+          );
+          pintar();
+          return;
+        }
         await agregarComidaAlMenu(dia.id, momento.id, Number(select.value));
         slotAgregando = null;
         clearNode(mensajeBox);
