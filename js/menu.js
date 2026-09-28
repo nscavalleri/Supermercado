@@ -391,7 +391,9 @@ export async function renderMenu(container) {
       filtradas.forEach((c) => {
         const bloqueada = bloqueadaPorRepeticion(c);
         const texto = bloqueada ? `${c.nombre} — ya está ${dondeEsta(c.id)[0]}` : c.nombre;
-        select.appendChild(el("option", { value: String(c.id), disabled: bloqueada }, texto));
+        select.appendChild(
+          el("option", bloqueada ? { value: String(c.id), disabled: true, class: "opcion-en-uso" } : { value: String(c.id) }, texto)
+        );
       });
       if (habilitadas.length > 0) select.value = String(habilitadas[0].id);
     }
@@ -428,7 +430,7 @@ export async function renderMenu(container) {
           showMensaje(
             mensajeBox,
             `"${comida.nombre}" no es repetible y ya está en el menú ${dondeEsta(comida.id).join(", ")}. ` +
-              `Si querés poder repetirla, tildá "Repetible" en Configuración > Menú.`
+              `Si querés poder repetirla, prendé el ícono de repetir (flechas en círculo) en Configuración > Menú.`
           );
           pintar();
           return;

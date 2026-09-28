@@ -7,6 +7,7 @@ import {
   showMensaje,
   confirmar,
   botonIcono,
+  botonIconoToggle,
   crearInputConAutocompletado,
   mismoNombre,
 } from "./ui.js";
@@ -81,12 +82,20 @@ export async function renderConfigMenu(container) {
   }
 
   const selectNuevoTipo = crearSelectTipo(null);
-  const checkNuevaRepetible = el("input", { type: "checkbox" });
+  const TEXTOS_REPETIBLE = {
+    si: "Repetible: puede estar más de una vez en el menú de la semana (tocá para cambiar)",
+    no: "No repetible: solo puede estar una vez en el menú de la semana (tocá para cambiar)",
+  };
+  // En el alta arranca apagado (no repetible); se prende y apaga al tocarlo.
+  const toggleNuevaRepetible = botonIconoToggle("repetible", false, TEXTOS_REPETIBLE);
+  toggleNuevaRepetible.addEventListener("click", () =>
+    toggleNuevaRepetible.marcar(!toggleNuevaRepetible.estaActivo())
+  );
 
   const { nodo: formNueva, input: inputNueva } = crearInputConAutocompletado({
     placeholder: "Nombre de la comida (ej: Milanesa con puré)",
     textoBoton: "Agregar comida",
-    extras: [selectNuevoTipo, el("label", { class: "check-perecedero" }, [checkNuevaRepetible, "Repetible"])],
+    extras: [selectNuevoTipo, toggleNuevaRepetible],
     getSugerencias: (texto) =>
       comidas.filter((c) => c.nombre.toLowerCase().includes(texto.toLowerCase())),
     onSubmit: (texto) => agregarComida(texto),
@@ -97,7 +106,7 @@ export async function renderConfigMenu(container) {
     el(
       "p",
       { class: "texto-ayuda" },
-      "Cargá acá cada comida con los productos que lleva. Después, desde la solapa Menú, las asignás a los días de la semana. Tildá \"Repetible\" en las comidas que pueden aparecer más de una vez en la semana."
+      "Cargá acá cada comida con los productos que lleva. Después, desde la solapa Menú, las asignás a los días de la semana. Prendé el ícono de repetir (flechas en círculo) en las comidas que pueden aparecer más de una vez en la semana."
     )
   );
   container.appendChild(mensajeBox);
@@ -146,25 +155,22 @@ export async function renderConfigMenu(container) {
       cantidad === 0 ? "Sin ingredientes" : cantidad === 1 ? "1 ingrediente" : `${cantidad} ingredientes`
     );
 
-    // Repetible sí/no: se guarda apenas se tilda o destilda.
-    const checkRepetible = el("input", { type: "checkbox" });
-    checkRepetible.checked = !!comida.repetible;
-    const labelRepetible = el(
-      "label",
-      { class: "check-perecedero", title: "Si está tildado, la comida puede estar más de una vez en el menú de la semana" },
-      [checkRepetible, "Repetible"]
-    );
-    checkRepetible.addEventListener("change", async () => {
-      checkRepetible.disabled = true;
+    // Repetible sí/no: botón con el ícono de ciclo, al lado de los demás
+    // botones de la fila. Se guarda apenas se toca.
+    const toggleRepetible = botonIconoToggle("repetible", comida.repetible, TEXTOS_REPETIBLE);
+    toggleRepetible.addEventListener("click", async () => {
+      const nuevo = !toggleRepetible.estaActivo();
+      toggleRepetible.disabled = true;
+      toggleRepetible.marcar(nuevo);
       try {
-        await actualizarRepetibleComida(comida.id, checkRepetible.checked);
-        comida.repetible = checkRepetible.checked;
+        await actualizarRepetibleComida(comida.id, nuevo);
+        comida.repetible = nuevo;
         clearNode(mensajeBox);
       } catch (err) {
-        checkRepetible.checked = !!comida.repetible;
+        toggleRepetible.marcar(!!comida.repetible);
         showMensaje(mensajeBox, "No se pudo actualizar: " + err.message);
       } finally {
-        checkRepetible.disabled = false;
+        toggleRepetible.disabled = false;
       }
     });
 
@@ -182,12 +188,13 @@ export async function renderConfigMenu(container) {
     const botonEliminar = botonIcono("eliminar");
 
     const acciones = el("div", { class: "abm-lista__acciones" }, [
+      toggleRepetible,
       botonDetalle,
       botonDuplicar,
       botonEditar,
       botonEliminar,
     ]);
-    const cabecera = el("div", { class: "comida__cabecera" }, [nombreSpan, tipoSpan, contador, labelRepetible, acciones]);
+    const cabecera = el("div", { class: "comida__cabecera" }, [nombreSpan, tipoSpan, contador, acciones]);
     const li = el("li", { class: "abm-lista__fila abm-lista__fila--bloque" }, [cabecera]);
 
     if (abierta) li.appendChild(renderIngredientes(comida));
@@ -362,10 +369,10 @@ export async function renderConfigMenu(container) {
     }
     const tipoElegido = selectNuevoTipo.value ? Number(selectNuevoTipo.value) : null;
     try {
-      const creada = await crearComida(nombre, tipoElegido, checkNuevaRepetible.checked);
+      const creada = await crearComida(nombre, tipoElegido, toggleNuevaRepetible.estaActivo());
       clearNode(mensajeBox);
       inputNueva.value = "";
-      checkNuevaRepetible.checked = false;
+      toggleNuevaRepetible.marcar(false);
       // Se abre sola para poder cargarle los ingredientes enseguida.
       abiertas.add(creada.id);
       await cargar();

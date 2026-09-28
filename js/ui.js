@@ -60,6 +60,10 @@ const ICONOS = {
   guardar: '<path d="M5 12.5l4.5 4.5L19 7.5" />',
   // Cruz
   cancelar: '<path d="M6 6l12 12M18 6L6 18" />',
+  // Dos flechas en círculo (ciclo): comida que se puede repetir en la semana
+  repetible:
+    '<path d="M4.5 12a7.5 7.5 0 0 1 12.8-5.3L19.5 9" /><path d="M19.5 4.5V9H15" />' +
+    '<path d="M19.5 12a7.5 7.5 0 0 1-12.8 5.3L4.5 15" /><path d="M4.5 19.5V15H9" />',
 };
 
 const ETIQUETAS = {
@@ -68,7 +72,26 @@ const ETIQUETAS = {
   eliminar: "Eliminar",
   guardar: "Guardar",
   cancelar: "Cancelar",
+  repetible: "Repetible",
 };
+
+// Botón de ícono que se prende y apaga (ej: "Repetible"). Prendido se ve
+// relleno de celeste; apagado, como los demás botones de ícono. El texto de
+// ayuda (tooltip) cambia según el estado, así se sabe qué significa cada uno.
+//   textos: { si: "...", no: "..." }
+export function botonIconoToggle(tipo, activo, textos) {
+  const boton = botonIcono(tipo);
+  function marcar(valor) {
+    boton.classList.toggle("btn-icono--activo", valor);
+    boton.setAttribute("aria-pressed", valor ? "true" : "false");
+    boton.title = valor ? textos.si : textos.no;
+    boton.setAttribute("aria-label", boton.title);
+  }
+  marcar(!!activo);
+  boton.marcar = marcar;
+  boton.estaActivo = () => boton.getAttribute("aria-pressed") === "true";
+  return boton;
+}
 
 // Botón cuadrado con ícono. El texto va en title/aria-label, así se ve el
 // tooltip al pasar el mouse y los lectores de pantalla lo siguen leyendo.

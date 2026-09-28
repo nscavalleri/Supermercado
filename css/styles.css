@@ -488,6 +488,21 @@ select:focus {
   border-color: var(--peligro);
 }
 
+/* Botón de ícono que se prende y apaga (ej: Repetible en Configuración > Menú).
+   Apagado se ve como los demás; prendido, relleno de celeste. */
+.btn-icono--repetible:hover {
+  background: #e4f9fc;
+  border-color: var(--celeste);
+  color: var(--celeste-oscuro);
+}
+
+.btn-icono--activo,
+.btn-icono--activo:hover {
+  background: var(--celeste);
+  border-color: var(--celeste);
+  color: white;
+}
+
 .btn-icono--guardar {
   background: var(--celeste);
   border-color: var(--celeste);
@@ -1059,6 +1074,14 @@ body.con-modal {
 .aviso-vencimientos__ver:hover {
   background: #f0a020;
   color: white;
+}
+
+/* Comidas que ya están en el menú y no se pueden repetir (desplegable de la
+   solapa Menú): más claras que el gris por defecto del navegador, para que
+   se lean pero no compitan con las que sí se pueden elegir. */
+option.opcion-en-uso,
+option:disabled {
+  color: #b4b4c0;
 }
 
 /* ---------- Responsive ---------- */
