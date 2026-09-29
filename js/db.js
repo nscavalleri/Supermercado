@@ -7,7 +7,7 @@ import { supabase } from "./supabaseClient.js";
 export async function fetchProductos() {
   const { data, error } = await supabase
     .from("productos")
-    .select("id, nombre, tipo_producto_id, tipo_producto:tipos_producto(id, nombre, perecedero)")
+    .select("id, nombre, tipo_producto_id, perecedero, tipo_producto:tipos_producto(id, nombre)")
     .order("nombre", { ascending: true });
   if (error) throw error;
   return data;
@@ -16,11 +16,12 @@ export async function fetchProductos() {
 // tipoProductoId es opcional: cuando el producto se crea desde una lista
 // (buscarOCrearProducto) siempre queda sin tipo (null), y se clasifica
 // después desde Configuración > Productos.
-export async function crearProducto(nombre, tipoProductoId = null) {
+// perecedero: si el producto se vence (columna productos.perecedero, por defecto false).
+export async function crearProducto(nombre, tipoProductoId = null, perecedero = false) {
   const { data, error } = await supabase
     .from("productos")
-    .insert({ nombre: nombre.trim(), tipo_producto_id: tipoProductoId })
-    .select("id, nombre, tipo_producto_id, tipo_producto:tipos_producto(id, nombre, perecedero)")
+    .insert({ nombre: nombre.trim(), tipo_producto_id: tipoProductoId, perecedero })
+    .select("id, nombre, tipo_producto_id, perecedero, tipo_producto:tipos_producto(id, nombre)")
     .single();
   if (error) throw error;
   return data;
@@ -72,6 +73,11 @@ export async function fetchUsosProducto(productoId) {
 // Antes de borrar el producto se lo quita explícitamente de las listas y de
 // los ingredientes de las comidas, para no depender de cómo estén definidas
 // las FK en la base (sin cascada, el delete fallaría por estar en uso).
+export async function actualizarPerecederoProducto(id, perecedero) {
+  const { error } = await supabase.from("productos").update({ perecedero }).eq("id", id);
+  if (error) throw error;
+}
+
 export async function eliminarProducto(id) {
   for (const tabla of ["lista_online", "lista_presencial", "comida_ingredientes", "stock"]) {
     const { error: errorUso } = await supabase.from(tabla).delete().eq("producto_id", id);
@@ -120,17 +126,16 @@ export async function buscarOCrearProducto(nombreIngresado) {
 export async function fetchTiposProducto() {
   const { data, error } = await supabase
     .from("tipos_producto")
-    .select("id, nombre, perecedero")
+    .select("id, nombre")
     .order("nombre", { ascending: true });
   if (error) throw error;
   return data;
 }
 
-// perecedero: true/false (columna tipos_producto.perecedero, por defecto false).
-export async function crearTipoProducto(nombre, perecedero = false) {
+export async function crearTipoProducto(nombre) {
   const { data, error } = await supabase
     .from("tipos_producto")
-    .insert({ nombre: nombre.trim(), perecedero })
+    .insert({ nombre: nombre.trim() })
     .select()
     .single();
   if (error) throw error;
@@ -139,11 +144,6 @@ export async function crearTipoProducto(nombre, perecedero = false) {
 
 export async function actualizarTipoProducto(id, nombre) {
   const { error } = await supabase.from("tipos_producto").update({ nombre: nombre.trim() }).eq("id", id);
-  if (error) throw error;
-}
-
-export async function actualizarPerecederoTipo(id, perecedero) {
-  const { error } = await supabase.from("tipos_producto").update({ perecedero }).eq("id", id);
   if (error) throw error;
 }
 

@@ -957,6 +957,36 @@ body.con-modal {
   color: var(--celeste-oscuro);
 }
 
+/* La etiqueta Perecedero / No perecedero es un botón: se toca para cambiarla. */
+.chip-perecedero {
+  border: 1px solid transparent;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.chip-perecedero:hover {
+  border-color: var(--celeste);
+}
+
+.chip-perecedero:focus-visible {
+  outline: 2px solid var(--celeste);
+  outline-offset: 2px;
+}
+
+/* En el formulario de alta, la etiqueta tiene la altura de los campos. */
+.form-agregar .chip-perecedero {
+  min-height: 42px;
+  padding: 0 14px;
+  font-size: 0.85rem;
+  border: 2px solid var(--borde);
+  border-radius: 10px;
+}
+
+.form-agregar .chip-perecedero.abm-lista__tipo--perecedero {
+  border-color: var(--celeste);
+}
+
 /* Etiquetas de tipo y perecedero juntas; en el celular van una arriba de la
    otra para que los botones de editar/eliminar sigan entrando en la fila. */
 .abm-lista__etiquetas {

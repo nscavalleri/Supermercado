@@ -14,6 +14,7 @@ import {
   crearProducto,
   actualizarProducto,
   eliminarProducto,
+  actualizarPerecederoProducto,
   fetchTiposProducto,
   fetchUsosProducto,
 } from "./db.js";
@@ -53,16 +54,36 @@ export async function renderProductos(container) {
     return select;
   }
 
+  // Etiqueta "Perecedero" / "No perecedero" que se puede tocar para cambiarla.
+  // Perecedero es de cada producto (productos.perecedero), no del tipo.
+  // alTocar(nuevoValor) decide qué hacer (guardar en la base, o solo marcar).
+  function crearChipPerecedero(valorInicial, alTocar) {
+    const chip = el("button", { type: "button", class: "abm-lista__tipo chip-perecedero" });
+    chip.marcar = (valor) => {
+      chip.dataset.valor = valor ? "1" : "0";
+      chip.textContent = valor ? "Perecedero" : "No perecedero";
+      chip.classList.toggle("abm-lista__tipo--perecedero", valor);
+      chip.title = (valor ? "Perecedero" : "No perecedero") + " — tocá para cambiarlo";
+      chip.setAttribute("aria-pressed", valor ? "true" : "false");
+    };
+    chip.valor = () => chip.dataset.valor === "1";
+    chip.marcar(!!valorInicial);
+    chip.addEventListener("click", () => alTocar(!chip.valor()));
+    return chip;
+  }
+
   /* ---------- Alta de producto, con autocompletado para no duplicar ---------- */
   // Mientras se escribe se sugieren los productos ya cargados (igual que en las
   // listas). Si el nombre coincide con uno existente no se crea de nuevo: se
   // avisa y se deja el que ya estaba.
   const selectNuevoTipo = crearSelectTipo(null);
+  // Perecedero en el alta: arranca en "No perecedero" y se cambia tocándolo.
+  const chipNuevoPerecedero = crearChipPerecedero(false, (valor) => chipNuevoPerecedero.marcar(valor));
 
   const { nodo: formNuevo, input: inputNuevo } = crearInputConAutocompletado({
     placeholder: "Nombre del producto (ej: Leche)",
     textoBoton: "Agregar producto",
-    extras: [selectNuevoTipo],
+    extras: [selectNuevoTipo, chipNuevoPerecedero],
     getSugerencias: (texto) =>
       productosCargados.filter((p) => p.nombre.toLowerCase().includes(texto.toLowerCase())),
     onSubmit: (texto) => agregar(texto),
@@ -134,14 +155,21 @@ export async function renderProductos(container) {
       { class: "abm-lista__tipo" },
       producto.tipo_producto ? producto.tipo_producto.nombre : "Sin tipo"
     );
-    // Perecedero sale del tipo del producto (tipos_producto.perecedero); un
-    // producto sin tipo cuenta como no perecedero.
-    const esPerecedero = !!producto.tipo_producto?.perecedero;
-    const perecederoSpan = el(
-      "span",
-      { class: "abm-lista__tipo" + (esPerecedero ? " abm-lista__tipo--perecedero" : "") },
-      esPerecedero ? "Perecedero" : "No perecedero"
-    );
+    // Tocar la etiqueta cambia Perecedero <-> No perecedero y se guarda en el momento.
+    const perecederoSpan = crearChipPerecedero(producto.perecedero, async (nuevo) => {
+      perecederoSpan.disabled = true;
+      perecederoSpan.marcar(nuevo);
+      try {
+        await actualizarPerecederoProducto(producto.id, nuevo);
+        producto.perecedero = nuevo;
+        clearNode(mensajeBox);
+      } catch (err) {
+        perecederoSpan.marcar(!!producto.perecedero);
+        showMensaje(mensajeBox, "No se pudo actualizar: " + err.message);
+      } finally {
+        perecederoSpan.disabled = false;
+      }
+    });
 
     const botonEditar = botonIcono("editar");
     const botonEliminar = botonIcono("eliminar");
@@ -243,10 +271,11 @@ export async function renderProductos(container) {
 
     const tipoSeleccionado = selectNuevoTipo.value ? Number(selectNuevoTipo.value) : null;
     try {
-      await crearProducto(nombre, tipoSeleccionado);
+      await crearProducto(nombre, tipoSeleccionado, chipNuevoPerecedero.valor());
       clearNode(mensajeBox);
       inputNuevo.value = "";
       selectNuevoTipo.value = SIN_TIPO_VALOR;
+      chipNuevoPerecedero.marcar(false);
       await cargar();
     } catch (err) {
       showMensaje(mensajeBox, "No se pudo crear el producto: " + err.message);
