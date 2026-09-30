@@ -1373,6 +1373,42 @@ option:disabled {
   font-weight: 400;
 }
 
+/* Arrastrar y soltar comidas entre casilleros. */
+.menuB-comida {
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.menuB-comida--arrastrando {
+  opacity: 0.35;
+}
+
+.menuB-fantasma {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 200;
+  pointer-events: none;
+  margin: 0;
+  opacity: 0.95;
+  border-color: var(--celeste);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+  cursor: grabbing;
+}
+
+.menuB-celda--destino {
+  background: #e4f9fc !important;
+  box-shadow: inset 0 0 0 2px var(--celeste);
+}
+
+body.menuB-arrastrando,
+body.menuB-arrastrando * {
+  cursor: grabbing !important;
+  user-select: none;
+}
+
 /* ===================== fin MENÚ B ===================== */
 
 /* ---------- Responsive ---------- */

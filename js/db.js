@@ -408,6 +408,15 @@ export async function vaciarMenuSemanal() {
   if (error) throw error;
 }
 
+// Mueve una comida del menú a otro día y/o momento (arrastrar en Menú 2).
+// Devuelve false si en ese destino ya estaba esa misma comida (no se duplica).
+export async function moverComidaDelMenu(id, diaId, momentoId) {
+  const { error } = await supabase.from("menu_semanal").update({ dia_id: diaId, momento_id: momentoId }).eq("id", id);
+  if (error && error.code === "23505") return false;
+  if (error) throw error;
+  return true;
+}
+
 export async function quitarComidaDelMenu(id) {
   const { error } = await supabase.from("menu_semanal").delete().eq("id", id);
   if (error) throw error;

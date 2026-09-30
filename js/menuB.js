@@ -20,6 +20,7 @@ import {
   fetchSupermercados,
   agregarComidaAlMenu,
   quitarComidaDelMenu,
+  moverComidaDelMenu,
   vaciarMenuSemanal,
   agregarProductosALista,
 } from "./db.js";
@@ -45,6 +46,18 @@ function ordenDesdeHoy(dias) {
   }
   return orden;
 }
+
+// Mientras se arrastra una comida con el dedo, se frena el desplazamiento del
+// navegador (si no, se movería la página en vez de la comida). Se registra una
+// sola vez para toda la app, no cada vez que se abre la solapa.
+let arrastrandoAhora = false;
+document.addEventListener(
+  "touchmove",
+  (e) => {
+    if (arrastrandoAhora) e.preventDefault();
+  },
+  { passive: false }
+);
 
 export async function renderMenuB(container) {
   clearNode(container);
@@ -213,7 +226,11 @@ export async function renderMenuB(container) {
     const clave = `${dia.id}-${momento.id}`;
     const abierto = slotAgregando === clave;
 
-    const celda = el("td", { class: "menuB-celda" + (esHoy ? " menuB-celda--hoy" : "") });
+    const celda = el("td", {
+      class: "menuB-celda" + (esHoy ? " menuB-celda--hoy" : ""),
+      "data-dia": String(dia.id),
+      "data-momento": String(momento.id),
+    });
     items.forEach((item) => celda.appendChild(renderItem(item)));
 
     if (abierto) {
@@ -264,11 +281,197 @@ export async function renderMenuB(container) {
       }
     });
 
-    return el("div", { class: "menuB-comida" + (abierto ? " menuB-comida--activa" : ""), title: item.comida?.tipo_comida?.nombre || "" }, [
-      el("span", { class: "menuB-comida__nombre" }, item.comida ? item.comida.nombre : "(comida eliminada)"),
-      el("div", { class: "menuB-comida__acciones" }, [verIngredientes, quitar]),
-    ]);
+    const tarjeta = el(
+      "div",
+      {
+        class: "menuB-comida" + (abierto ? " menuB-comida--activa" : ""),
+        title: "Arrastrala para moverla a otro día (en el celular: mantenela apretada y arrastrá)",
+      },
+      [
+        el("span", { class: "menuB-comida__nombre" }, item.comida ? item.comida.nombre : "(comida eliminada)"),
+        el("div", { class: "menuB-comida__acciones" }, [verIngredientes, quitar]),
+      ]
+    );
+    habilitarArrastre(tarjeta, item);
+    return tarjeta;
   }
+
+  /* ---------- Arrastrar y soltar (mover una comida a otro día / momento) ---------- */
+  // Funciona con mouse y con el dedo (Pointer Events, sin librerías):
+  // - Mouse: se aprieta sobre la comida y se arrastra (arranca al moverse unos píxeles).
+  // - Celular: hay que MANTENERLA APRETADA un momento (~0,35 s) y recién ahí
+  //   arrastrar. Así, deslizar el dedo rápido sigue sirviendo para mover la
+  //   tabla de costado o la página, sin agarrar comidas sin querer.
+  // Mientras se arrastra: la comida sigue al dedo/mouse, el casillero de
+  // destino se resalta y, cerca de los bordes, la tabla/página se desplaza sola.
+  const ESPERA_TOQUE_MS = 350;
+  const TOLERANCIA_PX = 8;
+  let arrastre = null; // { item, tarjeta, fantasma, destino, ... } mientras se arrastra
+  let ignorarClick = false;
+
+  function habilitarArrastre(tarjeta, item) {
+    tarjeta.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0 || e.target.closest("button") || arrastre) return;
+      const inicio = { x: e.clientX, y: e.clientY };
+      const esTactil = e.pointerType !== "mouse";
+      let temporizador = null;
+      let empezado = false;
+
+      const empezar = (x, y) => {
+        empezado = true;
+        iniciarArrastre(item, tarjeta, x, y);
+        if (esTactil && navigator.vibrate) navigator.vibrate(15);
+      };
+      const alMover = (ev) => {
+        if (ev.pointerId !== e.pointerId) return;
+        const lejos = Math.hypot(ev.clientX - inicio.x, ev.clientY - inicio.y) > TOLERANCIA_PX;
+        if (!empezado) {
+          if (esTactil) {
+            // Se movió antes de tiempo: es un desplazamiento normal, no un arrastre.
+            if (lejos) terminar();
+          } else if (lejos) {
+            empezar(ev.clientX, ev.clientY);
+          }
+          return;
+        }
+        moverArrastre(ev.clientX, ev.clientY);
+      };
+      const alSoltar = (ev) => {
+        if (ev.pointerId !== e.pointerId) return;
+        const habia = empezado;
+        terminar();
+        if (habia) soltarArrastre(ev.type === "pointercancel");
+      };
+      function terminar() {
+        clearTimeout(temporizador);
+        document.removeEventListener("pointermove", alMover);
+        document.removeEventListener("pointerup", alSoltar);
+        document.removeEventListener("pointercancel", alSoltar);
+      }
+
+      document.addEventListener("pointermove", alMover);
+      document.addEventListener("pointerup", alSoltar);
+      document.addEventListener("pointercancel", alSoltar);
+      if (esTactil) temporizador = setTimeout(() => empezar(inicio.x, inicio.y), ESPERA_TOQUE_MS);
+    });
+    // En el celular, mantener apretado abre el menú del sistema (copiar, etc.): se evita.
+    tarjeta.addEventListener("contextmenu", (e) => e.preventDefault());
+  }
+
+
+  function iniciarArrastre(item, tarjeta, x, y) {
+    const caja = tarjeta.getBoundingClientRect();
+    const fantasma = tarjeta.cloneNode(true);
+    fantasma.classList.add("menuB-fantasma");
+    fantasma.style.width = caja.width + "px";
+    document.body.appendChild(fantasma);
+    tarjeta.classList.add("menuB-comida--arrastrando");
+    document.body.classList.add("menuB-arrastrando");
+    arrastre = {
+      item,
+      tarjeta,
+      fantasma,
+      destino: null,
+      dx: x - caja.left,
+      dy: y - caja.top,
+      x,
+      y,
+      autoScroll: null,
+    };
+    arrastrandoAhora = true;
+    moverArrastre(x, y);
+    arrastre.autoScroll = setInterval(desplazarCercaDeBordes, 16);
+  }
+
+  function moverArrastre(x, y) {
+    if (!arrastre) return;
+    arrastre.x = x;
+    arrastre.y = y;
+    arrastre.fantasma.style.transform = `translate(${x - arrastre.dx}px, ${y - arrastre.dy}px)`;
+    // El fantasma no recibe eventos (pointer-events: none), así se ve qué hay debajo.
+    const debajo = document.elementFromPoint(x, y);
+    const celda = debajo ? debajo.closest("#tab-menu2 .menuB-celda") : null;
+    if (celda !== arrastre.destino) {
+      if (arrastre.destino) arrastre.destino.classList.remove("menuB-celda--destino");
+      arrastre.destino = celda;
+      if (celda) celda.classList.add("menuB-celda--destino");
+    }
+  }
+
+  // Cerca de los bordes, se desplaza la tabla (de costado) o la página (arriba/abajo).
+  function desplazarCercaDeBordes() {
+    if (!arrastre) return;
+    const { x, y } = arrastre;
+    const margen = 48;
+    const paso = 14;
+    const scroll = contenido.querySelector(".menuB-scroll");
+    if (scroll) {
+      const r = scroll.getBoundingClientRect();
+      if (x < r.left + margen + 90) scroll.scrollLeft -= paso; // 90 = columna fija ALMUERZO/CENA
+      else if (x > r.right - margen) scroll.scrollLeft += paso;
+    }
+    if (y < margen) window.scrollBy(0, -paso);
+    else if (y > window.innerHeight - margen) window.scrollBy(0, paso);
+    moverArrastre(x, y);
+  }
+
+  async function soltarArrastre(cancelado) {
+    if (!arrastre) return;
+    const { item, tarjeta, fantasma, destino, autoScroll } = arrastre;
+    clearInterval(autoScroll);
+    fantasma.remove();
+    tarjeta.classList.remove("menuB-comida--arrastrando");
+    document.body.classList.remove("menuB-arrastrando");
+    if (destino) destino.classList.remove("menuB-celda--destino");
+    arrastre = null;
+    arrastrandoAhora = false;
+    // El "click" que el navegador dispara al soltar no tiene que abrir nada.
+    ignorarClick = true;
+    setTimeout(() => (ignorarClick = false), 0);
+
+    if (cancelado || !destino) return;
+    const diaId = Number(destino.dataset.dia);
+    const momentoId = Number(destino.dataset.momento);
+    if (diaId === item.dia_id && momentoId === item.momento_id) return; // mismo lugar
+
+    const dia = dias.find((d) => d.id === diaId);
+    const momento = momentos.find((m) => m.id === momentoId);
+    const nombre = item.comida ? item.comida.nombre : "La comida";
+    // Si en el destino ya está esa misma comida, no se mueve (quedaría repetida
+    // en el mismo día y momento). Se chequea acá porque la base puede no tener
+    // una regla que lo impida.
+    const yaEsta = menu.some(
+      (m) => m.id !== item.id && m.dia_id === diaId && m.momento_id === momentoId && m.comida?.id === item.comida?.id
+    );
+    if (yaEsta) {
+      showMensaje(mensajeBox, `"${nombre}" ya está el ${dia?.nombre} (${momento?.nombre}).`, "info");
+      return;
+    }
+    try {
+      const movida = await moverComidaDelMenu(item.id, diaId, momentoId);
+      if (!movida) {
+        showMensaje(mensajeBox, `"${nombre}" ya está el ${dia?.nombre} (${momento?.nombre}).`, "info");
+        return;
+      }
+      clearNode(mensajeBox);
+      await recargarMenu();
+    } catch (err) {
+      showMensaje(mensajeBox, "No se pudo mover la comida: " + err.message);
+      await recargarMenu();
+    }
+  }
+
+  // Evita que el click que sigue a un arrastre active un botón de la celda de destino.
+  contenido.addEventListener(
+    "click",
+    (e) => {
+      if (ignorarClick) {
+        e.stopPropagation();
+        e.preventDefault();
+      }
+    },
+    true
+  );
 
   // Panel de ingredientes debajo de la tabla, con título (qué comida y cuándo) y ✕.
   function renderPanelAbajo(item) {
