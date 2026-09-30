@@ -1198,6 +1198,183 @@ option:disabled {
   color: var(--peligro);
 }
 
+/* ===================== MENÚ B (prueba A/B, js/menuB.js) =====================
+   Todo lo de este bloque es solo de la solapa "Menú 2". Si se elige la
+   versión A, se borra el bloque entero. OJO: Menú B también usa clases de
+   la versión A que NO están acá (.panel-ingredientes, .form-filtro,
+   .menu__barra, .dia__hoy, .btn-icono--chico...): esas se quedan siempre. */
+
+/* En la computadora, Menú 2 usa todo el ancho de la pantalla. */
+#tab-menu2 {
+  max-width: none;
+}
+
+.menuB-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  background: var(--tarjeta);
+  border-radius: var(--radio);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+}
+
+.menuB-tabla {
+  width: 100%;
+  min-width: 1070px; /* 90px del momento + 7 días de ~140px: por debajo, scroll de costado */
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.menuB-tabla th,
+.menuB-tabla td {
+  border-bottom: 1px solid var(--borde);
+  border-left: 1px solid var(--borde);
+  padding: 8px;
+  vertical-align: top;
+  text-align: left;
+}
+
+.menuB-tabla tr > :first-child {
+  border-left: none;
+}
+
+.menuB-tabla tbody tr:last-child > * {
+  border-bottom: none;
+}
+
+/* Columna de la izquierda (ALMUERZO / CENA): queda fija al desplazar de costado. */
+.menuB-esquina,
+.menuB-momento {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  width: 90px;
+  background: var(--tarjeta);
+  box-shadow: 1px 0 0 var(--borde);
+}
+
+.menuB-momento {
+  color: var(--texto-suave);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  vertical-align: middle !important;
+}
+
+.menuB-dia {
+  color: var(--fucsia-oscuro);
+  font-size: 1rem;
+  font-weight: 700;
+  border-bottom: 2px solid var(--celeste) !important;
+  white-space: nowrap;
+}
+
+.menuB-dia .dia__hoy {
+  margin-left: 6px;
+}
+
+.menuB-dia--hoy,
+.menuB-celda--hoy {
+  background: #f2fcfd;
+}
+
+/* Una comida dentro de la celda. */
+.menuB-comida {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  background: var(--fondo);
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  padding: 6px 6px 6px 8px;
+  margin-bottom: 6px;
+  font-size: 0.9rem;
+}
+
+.menuB-comida--activa {
+  border-color: var(--celeste);
+}
+
+.menuB-comida__nombre {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  padding-top: 5px;
+}
+
+.menuB-comida__acciones {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.menuB-comida .btn-icono--chico {
+  width: 26px;
+  height: 26px;
+}
+
+.menuB-comida .btn-icono--chico svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* El selector para agregar, apilado para que entre en el ancho de la celda. */
+.menuB-celda .form-filtro {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.menuB-celda .form-filtro select {
+  min-width: 0;
+  max-width: none;
+  width: 100%;
+  font-size: 0.9rem;
+  padding: 6px 8px;
+  min-height: 36px;
+}
+
+.menuB-celda .form-filtro .abm-lista__acciones {
+  margin-left: 0;
+  justify-content: flex-end;
+}
+
+.menuB-celda__pie {
+  display: flex;
+}
+
+/* Panel de ingredientes, debajo de la tabla y a lo ancho. */
+.menuB-panel {
+  background: var(--tarjeta);
+  border-radius: var(--radio);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+  padding: 14px 16px;
+  margin-top: 12px;
+  max-width: var(--ancho-max);
+}
+
+.menuB-panel__cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.menuB-panel__titulo {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.menuB-panel__cuando {
+  color: var(--texto-suave);
+  font-weight: 400;
+}
+
+/* ===================== fin MENÚ B ===================== */
+
 /* ---------- Responsive ---------- */
 
 @media (max-width: 480px) {
