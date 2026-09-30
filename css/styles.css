@@ -605,30 +605,7 @@ select:focus {
 
 /* ---------- Menú semanal (solapa Menú) ---------- */
 
-/* Cada día es una tarjeta, igual que los paneles de las otras solapas. */
-.dia {
-  background: var(--tarjeta);
-  border-radius: var(--radio);
-  padding: 16px;
-  margin-top: 12px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
-}
-
-.dia:first-child {
-  margin-top: 8px;
-}
-
-.dia__titulo {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: var(--fucsia-oscuro);
-  border-bottom: 2px solid var(--celeste);
-  padding-bottom: 6px;
-  margin-bottom: 4px;
-}
-
-/* Distintivo del día de hoy, que siempre es el primero de la lista. */
+/* Distintivo del día de hoy (encabezado de la primera columna del menú). */
 .dia__hoy {
   background: var(--celeste);
   color: white;
@@ -640,33 +617,7 @@ select:focus {
   border-radius: 999px;
 }
 
-.momento {
-  margin-top: 16px;
-}
-
-.momento__titulo {
-  color: var(--texto-suave);
-  font-size: 0.8rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin: 0;
-}
-
-/* Título del momento (ALMUERZO / CENA) con el botón "+" al lado. */
-.momento__cabecera {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.momento__vacio {
-  margin: 0;
-  font-size: 0.88rem;
-}
-
-/* Botón de ícono más chico (el "+" de cada momento del menú). */
+/* Botón de ícono más chico (el "+" y los íconos de las comidas del menú). */
 .btn-icono--chico {
   width: 30px;
   height: 30px;
@@ -710,30 +661,6 @@ select:focus {
   background: var(--celeste);
   border-color: var(--celeste);
   color: white;
-}
-
-/* Cada comida del menú: la fila visible y, si está abierto, el panel de
-   ingredientes debajo. */
-.item-lista__contenedor {
-  list-style: none;
-}
-
-.item-lista__fila--menu {
-  background: var(--fondo);
-  /* Todo en una sola línea (nombre, tipo e íconos), también en el celular:
-     si el nombre es largo, se parte en dos renglones dentro de su lugar. */
-  flex-wrap: nowrap;
-}
-
-.item-lista__fila--menu .item-lista__nombre {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.momento > .form-filtro,
-.momento > .btn {
-  margin-top: 8px;
-  margin-bottom: 0;
 }
 
 /* Panel para mandar los ingredientes de una comida a una lista de compra. */
@@ -1198,14 +1125,13 @@ option:disabled {
   color: var(--peligro);
 }
 
-/* ===================== MENÚ B (prueba A/B, js/menuB.js) =====================
-   Todo lo de este bloque es solo de la solapa "Menú 2". Si se elige la
-   versión A, se borra el bloque entero. OJO: Menú B también usa clases de
-   la versión A que NO están acá (.panel-ingredientes, .form-filtro,
-   .menu__barra, .dia__hoy, .btn-icono--chico...): esas se quedan siempre. */
+/* ===================== MENÚ en tabla (js/menu.js) =====================
+   Clases con prefijo "menuB-" (quedó de la prueba A/B; la versión en lista
+   se eliminó). También usa .panel-ingredientes, .form-filtro, .menu__barra,
+   .dia__hoy y .btn-icono--chico / --agregar / --ingredientes. */
 
-/* En la computadora, Menú 2 usa todo el ancho de la pantalla. */
-#tab-menu2 {
+/* En la computadora, el Menú usa todo el ancho de la pantalla. */
+#tab-menu {
   max-width: none;
 }
 
@@ -1463,7 +1389,7 @@ body.menuB-arrastrando * {
   font-weight: 700;
 }
 
-/* ===================== fin MENÚ B ===================== */
+/* ===================== fin MENÚ en tabla ===================== */
 
 /* ---------- Responsive ---------- */
 
