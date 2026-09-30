@@ -526,6 +526,30 @@ export async function agregarProductosALista(productoIds, destino) {
   return { agregados: faltantes.length, yaEstaban: ids.length - faltantes.length };
 }
 
+/* ---------- Orden de las comidas dentro de un día/momento del menú ---------- */
+// Primero los platos principales, después las guarniciones, después cualquier
+// otro tipo (alfabético) y al final las que no tienen tipo. Dentro del mismo
+// tipo, en el orden en que se cargaron. Lo usan las dos versiones del Menú.
+const ORDEN_TIPOS_COMIDA = ["principal", "guarnicion"];
+
+export function ordenarPorTipoComida(items) {
+  const clave = (item) => {
+    const nombre = (item.comida?.tipo_comida?.nombre || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    if (!nombre) return [3, ""];
+    const i = ORDEN_TIPOS_COMIDA.indexOf(nombre);
+    return i >= 0 ? [i, ""] : [2, nombre];
+  };
+  return [...items].sort((a, b) => {
+    const [ga, na] = clave(a);
+    const [gb, nb] = clave(b);
+    return ga - gb || na.localeCompare(nb, "es") || a.id - b.id;
+  });
+}
+
 /* ---------- Orden/agrupado por tipo de producto (usado por las listas online y presencial) ---------- */
 // Agrupa items de una lista (cada uno con item.producto.tipo_producto) por
 // nombre de tipo, ordena los grupos alfabéticamente y deja "Sin clasificar"

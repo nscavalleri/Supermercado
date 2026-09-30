@@ -16,6 +16,7 @@ import {
   quitarComidaDelMenu,
   vaciarMenuSemanal,
   agregarProductosALista,
+  ordenarPorTipoComida,
 } from "./db.js";
 
 const SUPERMERCADO_POR_DEFECTO = "Mercadona";
@@ -181,7 +182,8 @@ export async function renderMenu(container) {
   }
 
   function renderMomento(dia, momento) {
-    const items = menu.filter((m) => m.dia_id === dia.id && m.momento_id === momento.id);
+    // Primero los platos principales y después las guarniciones.
+    const items = ordenarPorTipoComida(menu.filter((m) => m.dia_id === dia.id && m.momento_id === momento.id));
     const clave = `${dia.id}-${momento.id}`;
     const abierto = slotAgregando === clave;
 
