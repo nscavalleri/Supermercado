@@ -650,7 +650,66 @@ select:focus {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  margin: 0 0 8px 0;
+  margin: 0;
+}
+
+/* Título del momento (ALMUERZO / CENA) con el botón "+" al lado. */
+.momento__cabecera {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.momento__vacio {
+  margin: 0;
+  font-size: 0.88rem;
+}
+
+/* Botón de ícono más chico (el "+" de cada momento del menú). */
+.btn-icono--chico {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+}
+
+.btn-icono--chico svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2.2;
+}
+
+.btn-icono--agregar {
+  color: var(--celeste-oscuro);
+  border-color: var(--celeste);
+}
+
+.btn-icono--agregar:hover {
+  background: #e4f9fc;
+}
+
+.btn-icono--ingredientes {
+  color: var(--celeste-oscuro);
+}
+
+.btn-icono--ingredientes:hover {
+  background: #e4f9fc;
+  border-color: var(--celeste);
+}
+
+.btn-icono--ingredientes.btn-icono--activo,
+.btn-icono--ingredientes.btn-icono--activo:hover {
+  background: var(--celeste);
+  border-color: var(--celeste);
+  color: white;
+}
+
+/* Con el selector abierto, el "+" queda relleno de celeste. */
+.btn-icono--agregar.btn-icono--activo,
+.btn-icono--agregar.btn-icono--activo:hover {
+  background: var(--celeste);
+  border-color: var(--celeste);
+  color: white;
 }
 
 /* Cada comida del menú: la fila visible y, si está abierto, el panel de
@@ -661,6 +720,14 @@ select:focus {
 
 .item-lista__fila--menu {
   background: var(--fondo);
+  /* Todo en una sola línea (nombre, tipo e íconos), también en el celular:
+     si el nombre es largo, se parte en dos renglones dentro de su lugar. */
+  flex-wrap: nowrap;
+}
+
+.item-lista__fila--menu .item-lista__nombre {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .momento > .form-filtro,

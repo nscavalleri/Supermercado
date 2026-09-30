@@ -175,14 +175,10 @@ export async function renderConfigMenu(container) {
     });
 
     const abierta = abiertas.has(comida.id);
-    const botonDetalle = el(
-      "button",
-      {
-        class: `btn btn--secundario btn--chico${abierta ? " btn--activo" : ""}`,
-        type: "button",
-      },
-      abierta ? "Ocultar" : "Ingredientes"
-    );
+    // Ícono de receta (el mismo que en la solapa Menú): abre/cierra los ingredientes.
+    const botonDetalle = botonIcono("ingredientes", abierta ? "Ocultar ingredientes" : "Ver ingredientes");
+    if (abierta) botonDetalle.classList.add("btn-icono--activo");
+    botonDetalle.setAttribute("aria-expanded", abierta ? "true" : "false");
     const botonDuplicar = botonIcono("duplicar", "Duplicar con sus ingredientes");
     const botonEditar = botonIcono("editar");
     const botonEliminar = botonIcono("eliminar");

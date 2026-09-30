@@ -182,19 +182,42 @@ export async function renderMenu(container) {
 
   function renderMomento(dia, momento) {
     const items = menu.filter((m) => m.dia_id === dia.id && m.momento_id === momento.id);
+    const clave = `${dia.id}-${momento.id}`;
+    const abierto = slotAgregando === clave;
+
+    // Botón "+" al lado del nombre del momento (Almuerzo / Cena): abre el
+    // selector para agregar una comida; si ya está abierto, lo cierra.
+    const botonMas = botonIcono("agregar", `Agregar comida (${dia.nombre}, ${momento.nombre})`);
+    botonMas.classList.add("btn-icono--chico");
+    if (abierto) botonMas.classList.add("btn-icono--activo");
+    botonMas.setAttribute("aria-expanded", abierto ? "true" : "false");
+    botonMas.addEventListener("click", () => {
+      if (slotAgregando === clave) {
+        slotAgregando = null;
+      } else {
+        slotAgregando = clave;
+        enfocarSlot = true;
+        filtroTipoSlot = FILTRO_TODOS;
+        panelIngredientes = null;
+      }
+      pintar();
+    });
+
     const caja = el("div", { class: "momento" }, [
-      el("h4", { class: "momento__titulo" }, momento.nombre),
+      el("div", { class: "momento__cabecera" }, [el("h4", { class: "momento__titulo" }, momento.nombre), botonMas]),
     ]);
 
+    // El selector aparece justo debajo del título, al lado de donde se tocó el "+".
+    const selector = abierto ? renderAgregarComida(dia, momento) : null;
+    if (selector) caja.appendChild(selector);
+
     if (items.length === 0) {
-      caja.appendChild(el("p", { class: "texto-ayuda" }, "Sin comidas todavía."));
+      if (!abierto) caja.appendChild(el("p", { class: "texto-ayuda momento__vacio" }, "Sin comidas todavía."));
     } else {
       const ul = el("ul", { class: "item-lista" });
       items.forEach((item) => ul.appendChild(renderItem(item)));
       caja.appendChild(ul);
     }
-
-    caja.appendChild(renderAgregarComida(dia, momento));
     return caja;
   }
 
@@ -207,14 +230,12 @@ export async function renderMenu(container) {
     const tipoChip = item.comida?.tipo_comida
       ? el("span", { class: "abm-lista__tipo" }, item.comida.tipo_comida.nombre)
       : null;
-    const verIngredientes = el(
-      "button",
-      {
-        class: `btn btn--secundario btn--chico${panelIngredientes === item.id ? " btn--activo" : ""}`,
-        type: "button",
-      },
-      "Ingredientes"
-    );
+    // Ícono de receta: abre/cierra el panel para mandar los ingredientes a
+    // una lista. Con el panel abierto queda relleno de celeste.
+    const abierto = panelIngredientes === item.id;
+    const verIngredientes = botonIcono("ingredientes", abierto ? "Ocultar ingredientes" : "Ver ingredientes");
+    if (abierto) verIngredientes.classList.add("btn-icono--activo");
+    verIngredientes.setAttribute("aria-expanded", abierto ? "true" : "false");
     const quitar = botonIcono("eliminar", "Quitar del menú");
 
     const fila = el("div", { class: "item-lista__fila item-lista__fila--menu" }, [
@@ -366,21 +387,8 @@ export async function renderMenu(container) {
     return caja;
   }
 
-  // Botón "+ Agregar comida" que se convierte en un selector con el catálogo.
+  // Selector para agregar una comida a un día/momento (se abre con el "+").
   function renderAgregarComida(dia, momento) {
-    const clave = `${dia.id}-${momento.id}`;
-
-    if (slotAgregando !== clave) {
-      const boton = el("button", { class: "btn btn--secundario btn--chico", type: "button" }, "+ Agregar comida");
-      boton.addEventListener("click", () => {
-        slotAgregando = clave;
-        enfocarSlot = true;
-        filtroTipoSlot = FILTRO_TODOS;
-        panelIngredientes = null;
-        pintar();
-      });
-      return boton;
-    }
 
     if (comidas.length === 0) {
       const aviso = el(

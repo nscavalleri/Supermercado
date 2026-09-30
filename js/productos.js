@@ -63,7 +63,10 @@ export async function renderProductos(container) {
       chip.dataset.valor = valor ? "1" : "0";
       chip.textContent = valor ? "Perecedero" : "No perecedero";
       chip.classList.toggle("abm-lista__tipo--perecedero", valor);
-      chip.title = (valor ? "Perecedero" : "No perecedero") + " — tocá para cambiarlo";
+      // Tooltip con el criterio para decidir (pedido de Nadia).
+      chip.title = valor
+        ? "Es perecedero si dura menos de 6 meses a temperatura ambiente"
+        : "Es no perecedero si dura más de 6 meses a temperatura ambiente";
       chip.setAttribute("aria-pressed", valor ? "true" : "false");
     };
     chip.valor = () => chip.dataset.valor === "1";

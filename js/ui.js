@@ -60,6 +60,12 @@ const ICONOS = {
   guardar: '<path d="M5 12.5l4.5 4.5L19 7.5" />',
   // Cruz
   cancelar: '<path d="M6 6l12 12M18 6L6 18" />',
+  // Más
+  agregar: '<path d="M12 5v14M5 12h14" />',
+  // Hoja de receta con renglones: ver los ingredientes de una comida
+  ingredientes:
+    '<rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 3.5h6v2H9z" />' +
+    '<path d="M9 10h6M9 13.5h6M9 17h3.5" />',
   // Dos flechas en círculo (ciclo): comida que se puede repetir en la semana
   repetible:
     '<path d="M4.5 12a7.5 7.5 0 0 1 12.8-5.3L19.5 9" /><path d="M19.5 4.5V9H15" />' +
@@ -72,6 +78,8 @@ const ETIQUETAS = {
   eliminar: "Eliminar",
   guardar: "Guardar",
   cancelar: "Cancelar",
+  agregar: "Agregar",
+  ingredientes: "Ingredientes",
   repetible: "Repetible",
 };
 
