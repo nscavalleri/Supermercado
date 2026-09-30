@@ -2,7 +2,9 @@
 // Es una plantilla fija que se repite todas las semanas (lo que ponés en
 // "Lunes > Cena" queda ahí hasta que lo cambies).
 // Desde cada comida se pueden mandar sus ingredientes a una lista de compra.
-import { el, clearNode, showMensaje, botonIcono, mismoNombre } from "./ui.js";
+// confirmar() se importa como confirmarModal porque más abajo hay un botón
+// que se llama "confirmar" (el de "Agregar a las listas").
+import { el, clearNode, showMensaje, botonIcono, mismoNombre, confirmar as confirmarModal } from "./ui.js";
 import {
   fetchDiasSemana,
   fetchMomentosComida,
@@ -12,6 +14,7 @@ import {
   fetchSupermercados,
   agregarComidaAlMenu,
   quitarComidaDelMenu,
+  vaciarMenuSemanal,
   agregarProductosALista,
 } from "./db.js";
 
@@ -42,7 +45,13 @@ export async function renderMenu(container) {
 
   const mensajeBox = el("div", { class: "mensaje-box" });
   const contenido = el("div", {}, "Cargando...");
+
+  // "Borrar todo": vacía el menú de toda la semana (con confirmación).
+  const botonBorrarTodo = el("button", { class: "btn btn--peligro btn--chico", type: "button" }, "Borrar todo");
+  const barra = el("div", { class: "menu__barra" }, [botonBorrarTodo]);
+
   container.appendChild(mensajeBox);
+  container.appendChild(barra);
   container.appendChild(contenido);
 
   let dias = [];
@@ -100,6 +109,33 @@ export async function renderMenu(container) {
     return;
   }
 
+  botonBorrarTodo.addEventListener("click", async () => {
+    const cantidad = menu.length;
+    if (cantidad === 0) return;
+    const ok = await confirmarModal({
+      titulo: "Borrar todo el menú",
+      mensaje: [
+        cantidad === 1
+          ? "Se va a quitar la comida cargada en el menú de la semana."
+          : `Se van a quitar las ${cantidad} comidas cargadas en el menú de la semana (todos los días y momentos).`,
+        "Las comidas no se borran del catálogo: siguen en Configuración > Menú para volver a usarlas. ¿Borrar todo?",
+      ],
+      textoAceptar: "Borrar todo",
+    });
+    if (!ok) return;
+    botonBorrarTodo.disabled = true;
+    try {
+      await vaciarMenuSemanal();
+      slotAgregando = null;
+      panelIngredientes = null;
+      await recargarMenu();
+      showMensaje(mensajeBox, "Se vació el menú de la semana.", "info");
+    } catch (err) {
+      showMensaje(mensajeBox, "No se pudo borrar el menú: " + err.message);
+      botonBorrarTodo.disabled = menu.length === 0;
+    }
+  });
+
   async function recargarMenu() {
     menu = await fetchMenuSemanal();
     pintar();
@@ -130,6 +166,9 @@ export async function renderMenu(container) {
     });
 
     contenido.replaceChildren(nuevo);
+    // Con el menú vacío no hay nada para borrar.
+    botonBorrarTodo.disabled = menu.length === 0;
+    botonBorrarTodo.title = menu.length === 0 ? "El menú de la semana ya está vacío" : "Quitar todas las comidas del menú de la semana";
     window.scrollTo(0, scrollAntes);
 
     if (focoPendiente) {

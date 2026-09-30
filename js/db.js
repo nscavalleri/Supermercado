@@ -400,6 +400,14 @@ export async function agregarComidaAlMenu(diaId, momentoId, comidaId) {
   if (error && error.code !== "23505") throw error;
 }
 
+// Vacía el menú de la semana entero (todas las filas de menu_semanal). Las
+// comidas del catálogo no se tocan. El filtro "id > 0" es porque Supabase no
+// deja borrar una tabla sin ninguna condición; todos los ids son positivos.
+export async function vaciarMenuSemanal() {
+  const { error } = await supabase.from("menu_semanal").delete().gt("id", 0);
+  if (error) throw error;
+}
+
 export async function quitarComidaDelMenu(id) {
   const { error } = await supabase.from("menu_semanal").delete().eq("id", id);
   if (error) throw error;

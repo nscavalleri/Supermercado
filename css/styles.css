@@ -1114,6 +1114,23 @@ option:disabled {
   color: #b4b4c0;
 }
 
+/* Barra de arriba de la solapa Menú (botón "Borrar todo", a la derecha). */
+.menu__barra {
+  display: flex;
+  justify-content: flex-end;
+  margin: 4px 0 12px 0;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.btn--peligro:disabled:hover {
+  background: white;
+  color: var(--peligro);
+}
+
 /* ---------- Responsive ---------- */
 
 @media (max-width: 480px) {
