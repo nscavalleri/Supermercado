@@ -397,7 +397,12 @@ export function crearCampoAutocompletado({ placeholder, getSugerencias, id }) {
     const sugerencias = texto ? getSugerencias(texto).slice(0, 8) : [];
     if (sugerencias.length === 0) return ocultar();
     sugerencias.forEach((item) => {
-      const li = el("li", { class: "autocomplete__item" }, item.nombre);
+      // Si la sugerencia trae "detalle" (ej: la descripción del producto), se
+      // muestra en chico debajo del nombre. Al elegirla se completa solo el nombre.
+      const li = el("li", { class: "autocomplete__item", "data-nombre": item.nombre }, [
+        el("span", {}, item.nombre),
+        item.detalle ? el("span", { class: "autocomplete__detalle" }, item.detalle) : null,
+      ]);
       li.addEventListener("mousedown", (e) => {
         e.preventDefault(); // antes del blur del input
         elegir(item.nombre);
@@ -418,7 +423,7 @@ export function crearCampoAutocompletado({ placeholder, getSugerencias, id }) {
     } else if (e.key === "Enter" && resaltado >= 0) {
       // Enter sobre una sugerencia resaltada la elige (no envía el formulario).
       e.preventDefault();
-      elegir(items[resaltado].textContent);
+      elegir(items[resaltado].dataset.nombre);
     } else if (e.key === "Escape") {
       // Cierra las sugerencias sin cerrar el modal.
       e.stopPropagation();

@@ -1459,6 +1459,17 @@ input.producto__descripcion-input {
   margin-bottom: 0;
 }
 
+/* Descripción del producto debajo del nombre, en las sugerencias de Agregar stock. */
+.autocomplete__item {
+  display: flex;
+  flex-direction: column;
+}
+
+.autocomplete__detalle {
+  font-size: 0.8rem;
+  color: var(--texto-suave);
+}
+
 /* ---------- Campo de fecha dd/mm/aaaa (ver crearCampoFecha en js/ui.js) ---------- */
 
 .campo-fecha {

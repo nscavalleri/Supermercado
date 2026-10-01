@@ -14,6 +14,7 @@ import {
   crearCampoAutocompletado,
   crearCampoFecha,
   mismoNombre,
+  normalizarTexto,
   botonIcono,
 } from "./ui.js";
 import {
@@ -254,7 +255,20 @@ export async function renderStock(container) {
     const campoProducto = crearCampoAutocompletado({
       id: "stock-producto",
       placeholder: "Escribí para buscar (ej: Leche)",
-      getSugerencias: (texto) => catalogo.filter((p) => p.nombre.toLowerCase().includes(texto.toLowerCase())),
+      // Busca en el nombre Y en la descripción del producto (sin importar
+      // mayúsculas ni acentos). Primero los que coinciden por nombre; si coincide
+      // por la descripción, se la muestra debajo para saber por qué apareció.
+      getSugerencias: (texto) => {
+        const buscado = normalizarTexto(texto);
+        const porNombre = [];
+        const porDescripcion = [];
+        catalogo.forEach((p) => {
+          if (normalizarTexto(p.nombre).includes(buscado)) porNombre.push({ ...p, detalle: p.descripcion || null });
+          else if (p.descripcion && normalizarTexto(p.descripcion).includes(buscado))
+            porDescripcion.push({ ...p, detalle: p.descripcion });
+        });
+        return [...porNombre, ...porDescripcion];
+      },
     });
     // Fecha siempre en dd/mm/aaaa (ver crearCampoFecha en ui.js).
     const campoFecha = crearCampoFecha({ id: "stock-fecha" });
