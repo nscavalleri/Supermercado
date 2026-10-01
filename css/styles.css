@@ -1423,6 +1423,74 @@ body.menuB-arrastrando * {
 
 /* ===================== fin MENÚ en tabla ===================== */
 
+/* ---------- Descripción del producto (solo Configuración > Productos) ---------- */
+
+.producto__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.producto__descripcion {
+  color: var(--texto-suave);
+  font-size: 0.82rem;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+
+/* Campo de descripción: ocupa todo el ancho, en su propia línea. */
+input.producto__descripcion-input {
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+/* En el alta va pegado debajo de la fila de nombre / tipo / perecedero. */
+.form-agregar + input.producto__descripcion-input {
+  margin-top: -8px;
+}
+
+.abm-lista__fila--editando {
+  flex-wrap: wrap;
+}
+
+.abm-lista__fila--editando input.producto__descripcion-input {
+  flex-basis: 100%;
+  margin-bottom: 0;
+}
+
+/* ---------- Campo de fecha dd/mm/aaaa (ver crearCampoFecha en js/ui.js) ---------- */
+
+.campo-fecha {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.campo-fecha input.campo-fecha__input {
+  flex: 1;
+  min-width: 0;
+  font-weight: 400;
+}
+
+.campo-fecha__boton {
+  color: var(--celeste-oscuro);
+}
+
+/* El calendario del navegador queda invisible debajo del botón: solo se abre al tocarlo. */
+.campo-fecha__nativo {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 40px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  border: 0;
+  padding: 0;
+}
+
 /* ---------- Responsive ---------- */
 
 @media (max-width: 480px) {

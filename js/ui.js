@@ -62,6 +62,9 @@ const ICONOS = {
   cancelar: '<path d="M6 6l12 12M18 6L6 18" />',
   // Más
   agregar: '<path d="M12 5v14M5 12h14" />',
+  // Calendario
+  calendario:
+    '<rect x="4" y="5.5" width="16" height="14.5" rx="2" /><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4" />',
   // Flecha hacia abajo sobre una bandeja: descargar
   descargar: '<path d="M12 4v11" /><path d="M7.5 10.5L12 15l4.5-4.5" /><path d="M5 19h14" />',
   // Hoja de receta con renglones: ver los ingredientes de una comida
@@ -82,6 +85,7 @@ const ETIQUETAS = {
   cancelar: "Cancelar",
   agregar: "Agregar",
   descargar: "Descargar",
+  calendario: "Elegir en el calendario",
   ingredientes: "Ingredientes",
   repetible: "Repetible",
 };
@@ -432,4 +436,74 @@ export function crearCampoAutocompletado({ placeholder, getSugerencias, id }) {
 
   wrapper.append(input, lista);
   return { nodo: wrapper, input };
+}
+
+/* ---------- Campo de fecha en formato dd/mm/aaaa ---------- */
+// El <input type="date"> del navegador muestra la fecha en el formato del
+// idioma del navegador (en inglés: mm/dd/yyyy) y no se puede cambiar. Este
+// campo siempre se escribe y se ve como dd/mm/aaaa: se tipean los números y
+// las barras se ponen solas. El botón del calendario abre el calendario del
+// navegador y la fecha elegida se pasa a dd/mm/aaaa.
+// Devuelve { nodo, input, getISO(), setISO(iso) }:
+//   getISO() → "AAAA-MM-DD" si es una fecha válida, "" si está vacío, null si es inválida.
+export function crearCampoFecha({ id } = {}) {
+  const input = el("input", {
+    type: "text",
+    id,
+    class: "campo-fecha__input",
+    placeholder: "dd/mm/aaaa",
+    inputmode: "numeric",
+    autocomplete: "off",
+    maxlength: "10",
+  });
+  // Calendario del navegador, invisible: solo se usa para elegir con el botón.
+  const nativo = el("input", { type: "date", class: "campo-fecha__nativo", tabindex: "-1", "aria-hidden": "true" });
+  const boton = botonIcono("calendario");
+  boton.classList.add("campo-fecha__boton");
+
+  const dosDig = (n) => String(n).padStart(2, "0");
+
+  function getISO() {
+    const texto = input.value.trim();
+    if (!texto) return "";
+    const m = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (!m) return null;
+    const [d, mes, a] = [Number(m[1]), Number(m[2]), Number(m[3])];
+    const f = new Date(a, mes - 1, d);
+    if (f.getFullYear() !== a || f.getMonth() !== mes - 1 || f.getDate() !== d) return null; // ej: 31/02
+    return `${a}-${dosDig(mes)}-${dosDig(d)}`;
+  }
+  function setISO(iso) {
+    const [a, m, d] = (iso || "").split("-");
+    input.value = a && m && d ? `${d}/${m}/${a}` : "";
+  }
+
+  // Mientras se escribe: solo números, y las barras se agregan solas (dd/mm/aaaa).
+  input.addEventListener("input", (e) => {
+    const borrando = e.inputType && e.inputType.startsWith("delete");
+    const numeros = input.value.replace(/\D/g, "").slice(0, 8);
+    let texto = numeros.slice(0, 2);
+    if (numeros.length > 2 || (!borrando && numeros.length === 2)) texto += "/";
+    texto += numeros.slice(2, 4);
+    if (numeros.length > 4 || (!borrando && numeros.length === 4)) texto += "/";
+    texto += numeros.slice(4, 8);
+    input.value = texto;
+  });
+
+  boton.addEventListener("click", () => {
+    nativo.value = getISO() || "";
+    try {
+      nativo.showPicker();
+    } catch {
+      nativo.focus();
+      nativo.click();
+    }
+  });
+  nativo.addEventListener("change", () => {
+    setISO(nativo.value);
+    input.focus();
+  });
+
+  const nodo = el("div", { class: "campo-fecha" }, [input, boton, nativo]);
+  return { nodo, input, getISO, setISO };
 }

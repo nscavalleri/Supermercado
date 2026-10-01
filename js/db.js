@@ -7,7 +7,7 @@ import { supabase } from "./supabaseClient.js";
 export async function fetchProductos() {
   const { data, error } = await supabase
     .from("productos")
-    .select("id, nombre, tipo_producto_id, perecedero, tipo_producto:tipos_producto(id, nombre)")
+    .select("id, nombre, descripcion, tipo_producto_id, perecedero, tipo_producto:tipos_producto(id, nombre)")
     .order("nombre", { ascending: true });
   if (error) throw error;
   return data;
@@ -17,20 +17,24 @@ export async function fetchProductos() {
 // (buscarOCrearProducto) siempre queda sin tipo (null), y se clasifica
 // después desde Configuración > Productos.
 // perecedero: si el producto se vence (columna productos.perecedero, por defecto false).
-export async function crearProducto(nombre, tipoProductoId = null, perecedero = false) {
+// descripcion: texto libre opcional (productos.descripcion); vacío se guarda como null.
+// Solo se muestra en Configuración > Productos, no en las listas.
+const limpiarDescripcion = (texto) => (texto || "").trim() || null;
+
+export async function crearProducto(nombre, tipoProductoId = null, perecedero = false, descripcion = null) {
   const { data, error } = await supabase
     .from("productos")
-    .insert({ nombre: nombre.trim(), tipo_producto_id: tipoProductoId, perecedero })
-    .select("id, nombre, tipo_producto_id, perecedero, tipo_producto:tipos_producto(id, nombre)")
+    .insert({ nombre: nombre.trim(), tipo_producto_id: tipoProductoId, perecedero, descripcion: limpiarDescripcion(descripcion) })
+    .select("id, nombre, descripcion, tipo_producto_id, perecedero, tipo_producto:tipos_producto(id, nombre)")
     .single();
   if (error) throw error;
   return data;
 }
 
-export async function actualizarProducto(id, nombre, tipoProductoId = null) {
+export async function actualizarProducto(id, nombre, tipoProductoId = null, descripcion = null) {
   const { error } = await supabase
     .from("productos")
-    .update({ nombre: nombre.trim(), tipo_producto_id: tipoProductoId })
+    .update({ nombre: nombre.trim(), tipo_producto_id: tipoProductoId, descripcion: limpiarDescripcion(descripcion) })
     .eq("id", id);
   if (error) throw error;
 }

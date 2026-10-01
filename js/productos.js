@@ -83,6 +83,17 @@ export async function renderProductos(container) {
   // Perecedero en el alta: arranca en "No perecedero" y se cambia tocándolo.
   const chipNuevoPerecedero = crearChipPerecedero(false, (valor) => chipNuevoPerecedero.marcar(valor));
 
+  // Descripción opcional del producto nuevo (solo se ve en esta pantalla).
+  const inputNuevaDescripcion = el("input", {
+    type: "text",
+    class: "producto__descripcion-input",
+    placeholder: "Descripción (opcional, ej: la marca que nos gusta)",
+    maxlength: "300",
+  });
+  inputNuevaDescripcion.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") agregar();
+  });
+
   const { nodo: formNuevo, input: inputNuevo } = crearInputConAutocompletado({
     placeholder: "Nombre del producto (ej: Leche)",
     textoBoton: "Agregar producto",
@@ -113,6 +124,7 @@ export async function renderProductos(container) {
   container.appendChild(el("h2", {}, "Productos"));
   container.appendChild(mensajeBox);
   container.appendChild(formNuevo);
+  container.appendChild(inputNuevaDescripcion);
   container.appendChild(filtroBox);
   container.appendChild(listaBox);
 
@@ -152,7 +164,11 @@ export async function renderProductos(container) {
   }
 
   function renderFila(producto) {
-    const nombreSpan = el("span", { class: "abm-lista__nombre" }, producto.nombre);
+    // Nombre y, debajo, la descripción (si tiene) en chico y gris.
+    const nombreSpan = el("div", { class: "abm-lista__nombre producto__info" }, [
+      el("span", {}, producto.nombre),
+      producto.descripcion ? el("span", { class: "producto__descripcion" }, producto.descripcion) : null,
+    ]);
     const tipoSpan = el(
       "span",
       { class: "abm-lista__tipo" },
@@ -182,19 +198,33 @@ export async function renderProductos(container) {
 
     botonEditar.addEventListener("click", () => {
       const inputEdit = el("input", { type: "text", value: producto.nombre });
+      const inputEditDescripcion = el("input", {
+        type: "text",
+        class: "producto__descripcion-input",
+        value: producto.descripcion || "",
+        placeholder: "Descripción (opcional)",
+        maxlength: "300",
+      });
       const selectEditTipo = crearSelectTipo(producto.tipo_producto_id);
       const guardar = botonIcono("guardar");
       const cancelar = botonIcono("cancelar");
       clearNode(li);
-      li.append(inputEdit, selectEditTipo, el("div", { class: "abm-lista__acciones" }, [guardar, cancelar]));
+      li.classList.add("abm-lista__fila--editando");
+      li.append(inputEdit, selectEditTipo, el("div", { class: "abm-lista__acciones" }, [guardar, cancelar]), inputEditDescripcion);
       inputEdit.focus();
+      [inputEdit, inputEditDescripcion].forEach((campo) =>
+        campo.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") guardar.click();
+          if (e.key === "Escape") cancelar.click();
+        })
+      );
 
       guardar.addEventListener("click", async () => {
         const nuevoNombre = inputEdit.value.trim();
         if (!nuevoNombre) return;
         const tipoSeleccionado = selectEditTipo.value ? Number(selectEditTipo.value) : null;
         try {
-          await actualizarProducto(producto.id, nuevoNombre, tipoSeleccionado);
+          await actualizarProducto(producto.id, nuevoNombre, tipoSeleccionado, inputEditDescripcion.value);
           await cargar();
         } catch (err) {
           showMensaje(mensajeBox, "No se pudo actualizar: " + err.message);
@@ -274,9 +304,10 @@ export async function renderProductos(container) {
 
     const tipoSeleccionado = selectNuevoTipo.value ? Number(selectNuevoTipo.value) : null;
     try {
-      await crearProducto(nombre, tipoSeleccionado, chipNuevoPerecedero.valor());
+      await crearProducto(nombre, tipoSeleccionado, chipNuevoPerecedero.valor(), inputNuevaDescripcion.value);
       clearNode(mensajeBox);
       inputNuevo.value = "";
+      inputNuevaDescripcion.value = "";
       selectNuevoTipo.value = SIN_TIPO_VALOR;
       chipNuevoPerecedero.marcar(false);
       await cargar();

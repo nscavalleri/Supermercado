@@ -6,7 +6,16 @@
 //   se agrega con una fecha que ya estaba, se suma la cantidad ingresada.
 // - La cantidad se edita directo en la lista; tildar el check saca el
 //   producto del stock (igual que "comprado" en las listas de compra).
-import { el, clearNode, showMensaje, abrirFormularioModal, crearCampoAutocompletado, mismoNombre, botonIcono } from "./ui.js";
+import {
+  el,
+  clearNode,
+  showMensaje,
+  abrirFormularioModal,
+  crearCampoAutocompletado,
+  crearCampoFecha,
+  mismoNombre,
+  botonIcono,
+} from "./ui.js";
 import {
   fetchStock,
   fetchProductos,
@@ -247,12 +256,13 @@ export async function renderStock(container) {
       placeholder: "Escribí para buscar (ej: Leche)",
       getSugerencias: (texto) => catalogo.filter((p) => p.nombre.toLowerCase().includes(texto.toLowerCase())),
     });
-    const inputFecha = el("input", { type: "date", id: "stock-fecha" });
+    // Fecha siempre en dd/mm/aaaa (ver crearCampoFecha en ui.js).
+    const campoFecha = crearCampoFecha({ id: "stock-fecha" });
     const inputCantidad = el("input", { type: "number", id: "stock-cantidad", min: "1", step: "1", inputmode: "numeric", value: "1" });
     if (editando) {
       // Al editar, el formulario viene completo con lo que ya estaba.
       campoProducto.input.value = item.producto ? item.producto.nombre : "";
-      inputFecha.value = item.fecha_vencimiento;
+      campoFecha.setISO(item.fecha_vencimiento);
       inputCantidad.value = String(item.cantidad);
     }
 
@@ -262,19 +272,20 @@ export async function renderStock(container) {
       textoAceptar: editando ? "Guardar" : "Agregar",
       campos: [
         el("label", { class: "modal__campo", for: "stock-producto" }, ["Producto *", campoProducto.nodo]),
-        el("label", { class: "modal__campo", for: "stock-fecha" }, ["Fecha de vencimiento *", inputFecha]),
+        el("label", { class: "modal__campo", for: "stock-fecha" }, ["Fecha de vencimiento *", campoFecha.nodo]),
         el("label", { class: "modal__campo", for: "stock-cantidad" }, ["Cantidad de unidades", inputCantidad]),
       ],
       guardar: async () => {
         const nombre = campoProducto.input.value.trim();
-        const fecha = inputFecha.value;
+        const fecha = campoFecha.getISO();
         const cantidadTexto = inputCantidad.value.trim();
         const cantidad = Number(cantidadTexto);
 
         const faltan = [];
         if (!nombre) faltan.push("el producto");
-        if (!fecha) faltan.push("la fecha de vencimiento");
+        if (fecha === "") faltan.push("la fecha de vencimiento");
         if (faltan.length) return `Completá ${faltan.join(" y ")}.`;
+        if (fecha === null) return "La fecha de vencimiento no es válida. Escribila como dd/mm/aaaa (ej: 15/10/2026).";
 
         const producto = catalogo.find((p) => mismoNombre(p.nombre, nombre));
         if (!producto)
