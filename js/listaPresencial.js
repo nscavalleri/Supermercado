@@ -16,15 +16,36 @@ const TODOS = "__todos__";
 // Configuración > Supermercados). Si no existe, se abre la vista "Todos".
 const SUPERMERCADO_POR_DEFECTO = "Mercadona";
 
-// Subsolapa elegida durante la sesión: se recuerda mientras la app está
-// abierta, así volver a Presencial no pierde el supermercado que estabas
-// mirando. Al entrar a la app (o al recargar la página) vuelve a null y se
-// aplica el default de arriba.
-let seleccionActual = null;
+// Subsolapa elegida: se recuerda mientras la app está abierta (también si el
+// navegador recarga la pestaña al volver a ella, por eso se guarda en
+// sessionStorage), así volver a Presencial no pierde el supermercado que
+// estabas mirando. Al abrir la app de cero vuelve a null y se aplica el default.
+const CLAVE_SELECCION = "supermercado_presencial";
+let seleccionActual = leerSeleccionGuardada();
 
-// Vuelve a dejar la selección en el default (lo llama app.js al ingresar).
+function leerSeleccionGuardada() {
+  try {
+    const guardada = sessionStorage.getItem(CLAVE_SELECCION);
+    if (guardada === null) return null;
+    return guardada === TODOS ? TODOS : Number(guardada);
+  } catch {
+    return null;
+  }
+}
+
+function guardarSeleccion(valor) {
+  seleccionActual = valor;
+  try {
+    if (valor === null) sessionStorage.removeItem(CLAVE_SELECCION);
+    else sessionStorage.setItem(CLAVE_SELECCION, String(valor));
+  } catch {
+    // Sin sessionStorage (modo privado estricto): se recuerda solo en memoria.
+  }
+}
+
+// Vuelve a dejar la selección en el default (lo llama app.js al abrir la app de cero).
 export function resetSeleccionPresencial() {
-  seleccionActual = null;
+  guardarSeleccion(null);
 }
 
 // Compara nombres ignorando mayúsculas, espacios y acentos.
@@ -65,7 +86,7 @@ export async function renderPresencial(container) {
   const sigueExistiendo =
     seleccionActual === TODOS || supermercados.some((s) => s.id === seleccionActual);
   if (seleccionActual === null || !sigueExistiendo) {
-    seleccionActual = seleccionPorDefecto(supermercados);
+    guardarSeleccion(seleccionPorDefecto(supermercados));
   }
 
   let activo = seleccionActual;
@@ -85,7 +106,7 @@ export async function renderPresencial(container) {
       boton.addEventListener("click", () => {
         if (activo === op.id) return;
         activo = op.id;
-        seleccionActual = op.id;
+        guardarSeleccion(op.id);
         renderTabs();
         renderContenido();
       });

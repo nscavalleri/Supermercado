@@ -62,6 +62,8 @@ const ICONOS = {
   cancelar: '<path d="M6 6l12 12M18 6L6 18" />',
   // Más
   agregar: '<path d="M12 5v14M5 12h14" />',
+  // Flecha hacia abajo sobre una bandeja: descargar
+  descargar: '<path d="M12 4v11" /><path d="M7.5 10.5L12 15l4.5-4.5" /><path d="M5 19h14" />',
   // Hoja de receta con renglones: ver los ingredientes de una comida
   ingredientes:
     '<rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 3.5h6v2H9z" />' +
@@ -79,6 +81,7 @@ const ETIQUETAS = {
   guardar: "Guardar",
   cancelar: "Cancelar",
   agregar: "Agregar",
+  descargar: "Descargar",
   ingredientes: "Ingredientes",
   repetible: "Repetible",
 };

@@ -491,6 +491,18 @@ export async function fetchStockPorVencer(hastaFechaISO) {
   return data || [];
 }
 
+// Edita una fila de stock entera (producto, fecha de vencimiento y cantidad).
+// Devuelve false si choca con otra fila del mismo producto y fecha (23505).
+export async function actualizarItemStock(id, productoId, fechaVencimiento, cantidad) {
+  const { error } = await supabase
+    .from("stock")
+    .update({ producto_id: productoId, fecha_vencimiento: fechaVencimiento, cantidad })
+    .eq("id", id);
+  if (error && error.code === "23505") return false;
+  if (error) throw error;
+  return true;
+}
+
 export async function actualizarCantidadStock(id, cantidad) {
   const { error } = await supabase.from("stock").update({ cantidad }).eq("id", id);
   if (error) throw error;

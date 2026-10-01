@@ -6,8 +6,15 @@
 //   se agrega con una fecha que ya estaba, se suma la cantidad ingresada.
 // - La cantidad se edita directo en la lista; tildar el check saca el
 //   producto del stock (igual que "comprado" en las listas de compra).
-import { el, clearNode, showMensaje, abrirFormularioModal, crearCampoAutocompletado, mismoNombre } from "./ui.js";
-import { fetchStock, fetchProductos, agregarStock, actualizarCantidadStock, eliminarItemStock } from "./db.js";
+import { el, clearNode, showMensaje, abrirFormularioModal, crearCampoAutocompletado, mismoNombre, botonIcono } from "./ui.js";
+import {
+  fetchStock,
+  fetchProductos,
+  agregarStock,
+  actualizarCantidadStock,
+  actualizarItemStock,
+  eliminarItemStock,
+} from "./db.js";
 import { actualizarAvisoVencimientos } from "./avisoVencimientos.js";
 
 const ORDENES = {
@@ -55,6 +62,8 @@ export async function renderStock(container) {
   let items = [];
 
   const botonAgregar = el("button", { class: "btn btn--primario", type: "button" }, "Agregar stock");
+  // Botón de ícono (descargar), sin texto: el tooltip explica qué hace.
+  const botonExportar = botonIcono("descargar", "Descargar el stock en Excel");
 
   const selectOrden = el("select", { class: "select-tipo", id: "orden-stock" });
   Object.entries(ORDENES).forEach(([valor, { texto }]) => selectOrden.appendChild(el("option", { value: valor }, texto)));
@@ -67,7 +76,7 @@ export async function renderStock(container) {
   container.appendChild(el("h2", {}, "Stock"));
   container.appendChild(mensajeBox);
   container.appendChild(el("div", { class: "stock__barra" }, [
-    botonAgregar,
+    el("div", { class: "stock__botones" }, [botonAgregar, botonExportar]),
     el("div", { class: "form-filtro stock__orden" }, [
       el("label", { class: "form-filtro__label", for: "orden-stock" }, "Ordenar por"),
       selectOrden,
@@ -87,6 +96,8 @@ export async function renderStock(container) {
 
   function pintar() {
     clearNode(listaBox);
+    // Sin nada en stock no hay qué exportar.
+    botonExportar.disabled = items.length === 0;
     if (items.length === 0) {
       listaBox.appendChild(el("p", { class: "texto-ayuda" }, "No hay nada en stock. Tocá \"Agregar stock\" para cargar un producto."));
       return;
@@ -119,7 +130,12 @@ export async function renderStock(container) {
     });
     const cantidadBox = el("label", { class: "stock__cantidad-box" }, [inputCantidad, el("span", {}, "u.")]);
 
-    const li = el("li", { class: "item-lista__fila stock__fila" }, [checkbox, info, cantidadBox]);
+    // Lápiz: abre el formulario para cambiar producto, fecha de vencimiento o cantidad.
+    const botonEditar = botonIcono("editar", "Editar (producto, fecha o cantidad)");
+    botonEditar.classList.add("btn-icono--chico");
+    botonEditar.addEventListener("click", () => abrirFormularioStock(item));
+
+    const li = el("li", { class: "item-lista__fila stock__fila" }, [checkbox, info, cantidadBox, botonEditar]);
 
     // La cantidad se guarda al salir del campo o con Enter.
     async function guardarCantidad() {
@@ -167,7 +183,57 @@ export async function renderStock(container) {
     return li;
   }
 
-  botonAgregar.addEventListener("click", async () => {
+  /* ---------- Exportar a Excel ---------- */
+  // Descarga un .xlsx con todo el stock, del vencimiento más próximo al más
+  // lejano (siempre así, sin importar el orden elegido en pantalla).
+  // La librería de Excel (SheetJS) se baja recién al tocar el botón, desde su
+  // CDN oficial, así no hace más lenta la carga de la app.
+  botonExportar.addEventListener("click", async () => {
+    botonExportar.disabled = true;
+    botonExportar.classList.add("btn-icono--cargando");
+    try {
+      const XLSX = await import("https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs");
+      // Se relee el stock para exportar lo último (por si la otra persona cambió algo).
+      items = await fetchStock();
+      pintar();
+      const hoy = hoyISO();
+      const ordenados = ordenar(items, "vencimiento-asc");
+
+      const filas = ordenados.map((item) => {
+        const [a, m, d] = item.fecha_vencimiento.split("-").map(Number);
+        const dias = Math.round((new Date(a, m - 1, d) - new Date(hoy + "T00:00:00")) / 86400000);
+        const estado = dias < 0 ? "Vencido" : dias === 0 ? "Vence hoy" : dias === 1 ? "Vence mañana" : `Vence en ${dias} días`;
+        return [new Date(a, m - 1, d), item.producto ? item.producto.nombre : "(producto eliminado)", item.cantidad, estado];
+      });
+      const hoja = XLSX.utils.aoa_to_sheet([["Fecha de vencimiento", "Producto", "Cantidad", "Estado"], ...filas], {
+        cellDates: true,
+      });
+      // Fechas con formato día/mes/año y ancho de columnas legible.
+      for (let fila = 1; fila <= filas.length; fila++) {
+        const celda = hoja[XLSX.utils.encode_cell({ r: fila, c: 0 })];
+        if (celda) celda.z = "dd/mm/yyyy";
+      }
+      hoja["!cols"] = [{ wch: 20 }, { wch: 32 }, { wch: 10 }, { wch: 18 }];
+      const libro = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(libro, hoja, "Stock");
+      XLSX.writeFile(libro, `Stock ${formatearFecha(hoy).replaceAll("/", "-")}.xlsx`);
+      clearNode(mensajeBox);
+    } catch (err) {
+      showMensaje(
+        mensajeBox,
+        "No se pudo exportar a Excel (¿hay conexión a internet?): " + (err?.message || err)
+      );
+    } finally {
+      botonExportar.classList.remove("btn-icono--cargando");
+      botonExportar.disabled = items.length === 0;
+    }
+  });
+
+  botonAgregar.addEventListener("click", () => abrirFormularioStock(null));
+
+  // Formulario de stock, para AGREGAR (item = null) o EDITAR una fila existente.
+  async function abrirFormularioStock(item) {
+    const editando = !!item;
     let catalogo = [];
     try {
       catalogo = await fetchProductos();
@@ -183,11 +249,17 @@ export async function renderStock(container) {
     });
     const inputFecha = el("input", { type: "date", id: "stock-fecha" });
     const inputCantidad = el("input", { type: "number", id: "stock-cantidad", min: "1", step: "1", inputmode: "numeric", value: "1" });
+    if (editando) {
+      // Al editar, el formulario viene completo con lo que ya estaba.
+      campoProducto.input.value = item.producto ? item.producto.nombre : "";
+      inputFecha.value = item.fecha_vencimiento;
+      inputCantidad.value = String(item.cantidad);
+    }
 
     let resultado = null;
     const guardado = await abrirFormularioModal({
-      titulo: "Agregar stock",
-      textoAceptar: "Agregar",
+      titulo: editando ? "Editar stock" : "Agregar stock",
+      textoAceptar: editando ? "Guardar" : "Agregar",
       campos: [
         el("label", { class: "modal__campo", for: "stock-producto" }, ["Producto *", campoProducto.nodo]),
         el("label", { class: "modal__campo", for: "stock-fecha" }, ["Fecha de vencimiento *", inputFecha]),
@@ -210,23 +282,48 @@ export async function renderStock(container) {
         if (!cantidadTexto || !Number.isInteger(cantidad) || cantidad < 1)
           return "La cantidad tiene que ser un número entero mayor a 0.";
 
-        resultado = { producto, fecha, ...(await agregarStock(producto.id, fecha, cantidad)) };
+        if (!editando) {
+          resultado = { modo: "agregar", producto, fecha, ...(await agregarStock(producto.id, fecha, cantidad)) };
+          return null;
+        }
+
+        // Editando: si no cambió nada, se cierra sin tocar la base.
+        if (producto.id === item.producto?.id && fecha === item.fecha_vencimiento && cantidad === item.cantidad) return null;
+
+        // Si con el cambio queda igual a OTRA fila (mismo producto y misma
+        // fecha), se juntan en una sola sumando las cantidades, igual que al
+        // agregar. Se relee el stock por si la otra persona cambió algo.
+        const actuales = await fetchStock();
+        const otra = actuales.find(
+          (s) => s.id !== item.id && s.producto?.id === producto.id && s.fecha_vencimiento === fecha
+        );
+        if (otra) {
+          const total = otra.cantidad + cantidad;
+          await actualizarCantidadStock(otra.id, total);
+          await eliminarItemStock(item.id);
+          resultado = { modo: "juntado", producto, fecha, cantidad: total };
+          return null;
+        }
+        const ok = await actualizarItemStock(item.id, producto.id, fecha, cantidad);
+        if (!ok) return `Ya hay "${producto.nombre}" con vencimiento ${formatearFecha(fecha)}. Probá de nuevo.`;
+        resultado = { modo: "editado", producto, fecha, cantidad };
         return null;
       },
     });
 
     if (!guardado || !resultado) return;
-    const { producto, fecha, sumado, cantidad } = resultado;
-    showMensaje(
-      mensajeBox,
-      sumado
+    const { modo, producto, fecha, cantidad } = resultado;
+    const textos = {
+      agregar: resultado.sumado
         ? `"${producto.nombre}" ya estaba con vencimiento ${formatearFecha(fecha)}: se sumó la cantidad (ahora hay ${cantidad}).`
         : `Se agregó "${producto.nombre}" (vence el ${formatearFecha(fecha)}).`,
-      "info"
-    );
+      editado: `Se actualizó "${producto.nombre}" (vence el ${formatearFecha(fecha)}, ${cantidad} u.).`,
+      juntado: `Ya había "${producto.nombre}" con vencimiento ${formatearFecha(fecha)}: se juntaron en una sola fila (ahora hay ${cantidad}).`,
+    };
+    showMensaje(mensajeBox, textos[modo], "info");
     await cargar();
     actualizarAvisoVencimientos();
-  });
+  }
 
   await cargar();
 }

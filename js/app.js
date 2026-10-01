@@ -36,13 +36,15 @@ formLogin.addEventListener("submit", async (e) => {
   const codigo = loginCodigo.value.trim();
   try {
     await ingresar(nombre, codigo);
-    mostrarApp();
+    // Recién ingresado: siempre arranca en el default.
+    mostrarApp({ restaurar: false });
   } catch (err) {
     showMensaje(loginMensaje, err.message);
   }
 });
 
 document.getElementById("btn-logout").addEventListener("click", async () => {
+  borrarNavegacion();
   try {
     await signOut();
   } catch (err) {
@@ -52,20 +54,73 @@ document.getElementById("btn-logout").addEventListener("click", async () => {
 
 /* ---------- Mostrar login o app según la sesión ---------- */
 
-function mostrarApp() {
+/* ---------- Recordar en qué pantalla estabas ---------- */
+// Al ABRIR la app (pestaña nueva, o la app instalada que estaba cerrada)
+// arranca siempre en Lista > Presencial > Mercadona. Pero si ya estaba abierta
+// y te vas a otra pestaña/app y volvés, sigue donde estabas — también si el
+// navegador recargó la pestaña por su cuenta (pasa en el celular). Para eso
+// se guarda la pantalla en sessionStorage, que dura lo que dura la pestaña.
+const CLAVE_NAVEGACION = "supermercado_navegacion";
+let appVisible = false;
+let tabActiva = "lista";
+
+function guardarNavegacion() {
+  try {
+    sessionStorage.setItem(
+      CLAVE_NAVEGACION,
+      JSON.stringify({ tab: tabActiva, lista: subtabListaActiva, config: subtabConfigActiva })
+    );
+  } catch {
+    // Sin sessionStorage: se recuerda solo mientras la página no se recargue.
+  }
+}
+
+function leerNavegacion() {
+  try {
+    return JSON.parse(sessionStorage.getItem(CLAVE_NAVEGACION) || "null");
+  } catch {
+    return null;
+  }
+}
+
+function borrarNavegacion() {
+  try {
+    sessionStorage.removeItem(CLAVE_NAVEGACION);
+  } catch {
+    /* nada */
+  }
+  resetSeleccionPresencial();
+}
+
+// restaurar: true = volver a la pantalla guardada de esta pestaña (si hay).
+function mostrarApp({ restaurar = true } = {}) {
+  // Supabase avisa "sesión iniciada" otra vez cada vez que volvés a la
+  // pestaña. Antes eso hacía que la app saltara al inicio: ahora, si ya está
+  // en pantalla, no se toca nada.
+  if (appVisible) return;
+  appVisible = true;
   pantallaLogin.classList.add("oculto");
   pantallaApp.classList.remove("oculto");
   headerUsuario.textContent = getUsuarioActual() || "";
-  // Al ingresar, la app siempre arranca en Lista > Presencial, y dentro de
-  // Presencial en el supermercado por defecto (Mercadona si existe, si no "Todos").
-  subtabListaActiva = "presencial";
-  subtabConfigActiva = "productos";
-  resetSeleccionPresencial();
-  activarTab("lista");
+
+  const guardada = restaurar ? leerNavegacion() : null;
+  if (guardada && botonesTab[guardada.tab]) {
+    subtabListaActiva = guardada.lista === "online" ? "online" : "presencial";
+    subtabConfigActiva = botonesConfig[guardada.config] ? guardada.config : "productos";
+    activarTab(guardada.tab);
+  } else {
+    // Default al abrir: Lista > Presencial, y dentro de Presencial el
+    // supermercado por defecto (Mercadona si existe, si no "Todos").
+    borrarNavegacion();
+    subtabListaActiva = "presencial";
+    subtabConfigActiva = "productos";
+    activarTab("lista");
+  }
   actualizarAvisoVencimientos();
 }
 
 function mostrarLogin() {
+  appVisible = false;
   pantallaApp.classList.add("oculto");
   pantallaLogin.classList.remove("oculto");
   formLogin.reset();
@@ -101,11 +156,13 @@ const panelesTab = {
 };
 
 function activarTab(tab) {
+  tabActiva = tab;
   Object.keys(panelesTab).forEach((nombre) => {
     botonesTab[nombre].classList.toggle("tab-btn--activo", nombre === tab);
     panelesTab[nombre].classList.toggle("oculto", nombre !== tab);
   });
 
+  guardarNavegacion();
   if (tab === "lista") activarSubtabLista(subtabListaActiva);
   else if (tab === "menu") renderMenu(panelesTab.menu);
   else if (tab === "stock") renderStock(document.getElementById("panel-stock"));
@@ -126,6 +183,7 @@ let subtabListaActiva = "presencial";
 
 function activarSubtabLista(subtab) {
   subtabListaActiva = subtab;
+  guardarNavegacion();
   const esPresencial = subtab === "presencial";
   btnSubtabPresencial.classList.toggle("subtab-btn--activo", esPresencial);
   btnSubtabOnline.classList.toggle("subtab-btn--activo", !esPresencial);
@@ -157,6 +215,7 @@ let subtabConfigActiva = "productos";
 
 function activarSubtabConfiguracion(subtab) {
   subtabConfigActiva = subtab;
+  guardarNavegacion();
   Object.keys(panelesConfig).forEach((nombre) => {
     botonesConfig[nombre].classList.toggle("subtab-btn--activo", nombre === subtab);
     panelesConfig[nombre].classList.toggle("oculto", nombre !== subtab);

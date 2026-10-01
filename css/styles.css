@@ -1010,6 +1010,38 @@ body.con-modal {
   margin-bottom: 0;
 }
 
+/* "Agregar stock" y el botón de descargar (Excel), uno al lado del otro. */
+.stock__botones {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn-icono--descargar {
+  color: var(--celeste-oscuro);
+  border-color: var(--celeste);
+}
+
+.btn-icono--descargar:hover {
+  background: #e4f9fc;
+}
+
+.btn-icono:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Mientras arma el archivo, el ícono titila. */
+.btn-icono--cargando svg {
+  animation: titilar 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes titilar {
+  from { opacity: 1; }
+  to { opacity: 0.3; }
+}
+
 .stock__fila {
   flex-wrap: nowrap;
 }
