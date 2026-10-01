@@ -184,8 +184,8 @@ export async function renderStock(container) {
   }
 
   /* ---------- Exportar a Excel ---------- */
-  // Descarga un .xlsx con todo el stock, del vencimiento más próximo al más
-  // lejano (siempre así, sin importar el orden elegido en pantalla).
+  // Descarga un .xlsx con todo el stock, en el MISMO orden que está elegido en
+  // "Ordenar por" (lo que ves en pantalla es lo que bajás).
   // La librería de Excel (SheetJS) se baja recién al tocar el botón, desde su
   // CDN oficial, así no hace más lenta la carga de la app.
   botonExportar.addEventListener("click", async () => {
@@ -197,7 +197,7 @@ export async function renderStock(container) {
       items = await fetchStock();
       pintar();
       const hoy = hoyISO();
-      const ordenados = ordenar(items, "vencimiento-asc");
+      const ordenados = ordenar(items, ordenActual);
 
       const filas = ordenados.map((item) => {
         const [a, m, d] = item.fecha_vencimiento.split("-").map(Number);
