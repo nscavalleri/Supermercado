@@ -226,7 +226,9 @@ export async function renderStock(container) {
       hoja["!cols"] = [{ wch: 20 }, { wch: 32 }, { wch: 10 }, { wch: 18 }];
       const libro = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(libro, hoja, "Stock");
-      XLSX.writeFile(libro, `Stock ${formatearFecha(hoy).replaceAll("/", "-")}.xlsx`);
+      // Nombre del archivo: "AAAAMMDD - Stock.xlsx" (ej: "20261031 - Stock.xlsx"),
+      // así en la carpeta de descargas quedan ordenados por fecha.
+      XLSX.writeFile(libro, `${hoy.replaceAll("-", "")} - Stock.xlsx`);
       clearNode(mensajeBox);
     } catch (err) {
       showMensaje(
