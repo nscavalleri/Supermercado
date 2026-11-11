@@ -712,7 +712,8 @@ select:focus {
   min-width: 140px;
 }
 
-.comida__cabecera select {
+.comida__cabecera select,
+.comida__cabecera .multiselect {
   flex: 1;
   min-width: 140px;
   max-width: 220px;
@@ -1539,4 +1540,96 @@ input.producto__descripcion-input {
     flex: 1;
     min-width: 0;
   }
+}
+
+/* ---------- Desplegable de selección múltiple (tipos de comida) ---------- */
+/* Se ve igual que un select; al tocarlo abre una lista con casillas. */
+.multiselect {
+  position: relative;
+  min-width: 160px;
+}
+
+.form-agregar .multiselect {
+  flex: 1;
+  max-width: 220px;
+}
+
+.multiselect__boton {
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 34px 10px 12px;
+  border-radius: 10px;
+  border: 2px solid var(--borde);
+  background: white;
+  color: var(--texto);
+  font: inherit;
+  font-size: 1rem;
+  text-align: left;
+  cursor: pointer;
+  position: relative;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Flechita como la de un select. */
+.multiselect__boton::after {
+  content: "";
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid var(--texto-suave);
+  border-bottom: 2px solid var(--texto-suave);
+  transform: translateY(-70%) rotate(45deg);
+}
+
+.multiselect__boton:focus,
+.multiselect--abierto .multiselect__boton {
+  outline: none;
+  border-color: var(--celeste);
+}
+
+.multiselect__boton--vacio {
+  color: var(--texto-suave);
+}
+
+.multiselect__lista {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 100%;
+  background: white;
+  border: 2px solid var(--borde);
+  border-radius: 10px;
+  padding: 4px;
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 25;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+.multiselect__opcion {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.multiselect__opcion:hover {
+  background: #e0f9fc;
+}
+
+/* Sin esto, el estilo de los campos del formulario estira la casilla. */
+.multiselect__opcion input {
+  flex: none;
+  min-width: 0;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--celeste);
+  margin: 0;
 }

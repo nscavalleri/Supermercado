@@ -88,27 +88,16 @@ export async function renderMenu(container) {
   // Tipo elegido en el filtro del slot que se está editando.
   let filtroTipoSlot = FILTRO_TODOS;
 
-  // Dónde está una comida en el menú de la semana: ["el Lunes (Cena)", ...].
-  function dondeEsta(comidaId) {
-    return menu
-      .filter((m) => m.comida?.id === comidaId)
-      .map((m) => {
-        const dia = dias.find((d) => d.id === m.dia_id);
-        const momento = momentos.find((x) => x.id === m.momento_id);
-        return `el ${dia ? dia.nombre : "?"} (${momento ? momento.nombre : "?"})`;
-      });
-  }
+  /* ---------- Desayuno y comidas (Almuerzo / Cena) ---------- */
+  // Una comida puede tener varios tipos (ej. Desayuno y Principal).
+  // - Fila Desayuno: van las comidas que tienen el tipo Desayuno.
+  // - Almuerzo / Cena (y cualquier otro momento): van las que tienen algún
+  //   tipo que no sea Desayuno (o que no tienen tipo).
+  // Desayuno y Tipo Desayuno se reconocen por el nombre, sin importar
+  // mayúsculas ni tildes.
+  const GRUPO_DESAYUNO = "desayuno";
+  const GRUPO_COMIDAS = "comidas";
 
-  // Una comida NO repetible (Configuración > Menú) solo puede estar una vez en
-  // toda la semana: si ya está en algún día/momento, no se puede agregar.
-  function bloqueadaPorRepeticion(comida) {
-    return !comida.repetible && menu.some((m) => m.comida?.id === comida.id);
-  }
-
-  /* ---------- Desayuno ---------- */
-  // La fila "Desayuno" (momento) solo lleva comidas de tipo "Desayuno", y
-  // Almuerzo / Cena llevan todo lo demás. Se reconocen por el nombre, sin
-  // importar mayúsculas ni tildes.
   function nombreNormal(texto) {
     return (texto || "")
       .trim()
@@ -116,20 +105,65 @@ export async function renderMenu(container) {
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "");
   }
-  function esDesayuno(comida) {
-    return nombreNormal(comida?.tipo_comida?.nombre) === "desayuno";
+  function esTipoDesayuno(tipo) {
+    return nombreNormal(tipo?.nombre) === "desayuno";
+  }
+  function tiposDe(comida) {
+    return comida?.tipos || [];
+  }
+  // ¿Se puede poner en la fila Desayuno?
+  function esDeDesayuno(comida) {
+    return tiposDe(comida).some(esTipoDesayuno);
+  }
+  // ¿Se puede poner en Almuerzo / Cena?
+  function esDeComidas(comida) {
+    const tipos = tiposDe(comida);
+    return tipos.length === 0 || tipos.some((t) => !esTipoDesayuno(t));
   }
   function esMomentoDesayuno(momento) {
     return nombreNormal(momento?.nombre) === "desayuno";
   }
+  function grupoDeMomento(momentoOId) {
+    const momento = typeof momentoOId === "object" ? momentoOId : momentos.find((m) => m.id === momentoOId);
+    return esMomentoDesayuno(momento) ? GRUPO_DESAYUNO : GRUPO_COMIDAS;
+  }
   // ¿Esta comida puede ir en este momento?
   function vaEnMomento(comida, momento) {
-    return esDesayuno(comida) === esMomentoDesayuno(momento);
+    return grupoDeMomento(momento) === GRUPO_DESAYUNO ? esDeDesayuno(comida) : esDeComidas(comida);
   }
   function avisoMomentoEquivocado(comida, momento) {
-    return esDesayuno(comida)
-      ? `"${comida.nombre}" es de desayuno: solo se puede poner en la fila Desayuno.`
-      : `"${comida.nombre}" no es de desayuno: no se puede poner en la fila ${momento?.nombre || "Desayuno"}.`;
+    return grupoDeMomento(momento) === GRUPO_DESAYUNO
+      ? `"${comida.nombre}" no es de desayuno: no se puede poner en la fila Desayuno.`
+      : `"${comida.nombre}" es solo de desayuno: no se puede poner en ${momento?.nombre || "Almuerzo / Cena"}.`;
+  }
+
+  // Dónde está una comida dentro de un grupo (desayunos o almuerzos/cenas):
+  // ["el Lunes (Cena)", ...]. excluirItemId: para no contarse a sí misma al moverla.
+  function usosEnGrupo(comidaId, grupo, excluirItemId = null) {
+    return menu.filter(
+      (m) => m.comida?.id === comidaId && m.id !== excluirItemId && grupoDeMomento(m.momento_id) === grupo
+    );
+  }
+  function dondeEsta(comidaId, grupo, excluirItemId = null) {
+    return usosEnGrupo(comidaId, grupo, excluirItemId).map((m) => {
+      const dia = dias.find((d) => d.id === m.dia_id);
+      const momento = momentos.find((x) => x.id === m.momento_id);
+      return `el ${dia ? dia.nombre : "?"} (${momento ? momento.nombre : "?"})`;
+    });
+  }
+
+  // Una comida NO repetible (Configuración > Menú) puede estar una sola vez
+  // entre los desayunos de la semana y una sola vez entre los almuerzos y
+  // cenas. Ej.: si ya está en un desayuno, todavía se puede poner en un
+  // almuerzo o una cena (si además es de ese tipo), pero no en otro desayuno.
+  function bloqueadaPorRepeticion(comida, grupo, excluirItemId = null) {
+    return !comida.repetible && usosEnGrupo(comida.id, grupo, excluirItemId).length > 0;
+  }
+  function avisoNoRepetible(comida, grupo, excluirItemId = null) {
+    const donde = dondeEsta(comida.id, grupo, excluirItemId).join(", ");
+    return grupo === GRUPO_DESAYUNO
+      ? `"${comida.nombre}" no es repetible y ya está en el desayuno ${donde}.`
+      : `"${comida.nombre}" no es repetible y ya está en el menú ${donde}.`;
   }
 
   try {
@@ -494,6 +528,13 @@ export async function renderMenu(container) {
       showMensaje(mensajeBox, `"${nombre}" ya está ${textoLugar(diaId, momentoId)}.`, "info");
       return;
     }
+    // Si pasa de un desayuno a un almuerzo/cena (o al revés) y no es
+    // repetible, no puede quedar dos veces en el grupo de destino.
+    const grupoDestino = grupoDeMomento(momentoDestino);
+    if (item.comida && bloqueadaPorRepeticion(item.comida, grupoDestino, item.id)) {
+      showMensaje(mensajeBox, avisoNoRepetible(item.comida, grupoDestino, item.id), "info");
+      return;
+    }
     try {
       const movida = await moverComidaDelMenu(item.id, diaId, momentoId);
       if (!movida) {
@@ -523,11 +564,9 @@ export async function renderMenu(container) {
         pintar();
         return;
       }
-      if (bloqueadaPorRepeticion(comida)) {
-        showMensaje(
-          mensajeBox,
-          `"${comida.nombre}" no es repetible y ya está en el menú ${dondeEsta(comida.id).join(", ")}.`
-        );
+      const grupoDestino = grupoDeMomento(momentoDestino);
+      if (bloqueadaPorRepeticion(comida, grupoDestino)) {
+        showMensaje(mensajeBox, avisoNoRepetible(comida, grupoDestino));
         pintar();
         return;
       }
@@ -554,21 +593,23 @@ export async function renderMenu(container) {
       renderSeccionOpciones(
         "comidas",
         "Más opciones de comidas",
-        (c) => !esDesayuno(c),
+        GRUPO_COMIDAS,
+        esDeComidas,
         "No quedan comidas disponibles para esta semana."
       ),
       renderSeccionOpciones(
         "desayuno",
         "Más opciones de desayuno",
-        (c) => esDesayuno(c),
+        GRUPO_DESAYUNO,
+        esDeDesayuno,
         "No quedan desayunos disponibles para esta semana."
       ),
     ]);
   }
 
-  function renderSeccionOpciones(clave, titulo, filtro, textoVacio) {
+  function renderSeccionOpciones(clave, titulo, grupo, filtro, textoVacio) {
     const disponibles = comidas
-      .filter((c) => filtro(c) && !bloqueadaPorRepeticion(c))
+      .filter((c) => filtro(c) && !bloqueadaPorRepeticion(c, grupo))
       .sort((a, b) => a.nombre.localeCompare(b.nombre, "es", { sensitivity: "base" }));
 
     const detalles = el("details", { class: "menuB-opciones", "data-seccion": clave });
@@ -778,6 +819,7 @@ export async function renderMenu(container) {
     // En la fila Desayuno solo se ofrecen comidas de tipo Desayuno; en las
     // demás filas, todo menos los desayunos.
     const filaDesayuno = esMomentoDesayuno(momento);
+    const grupo = grupoDeMomento(momento);
     const disponibles = comidas.filter((c) => !yaEnEsteSlot.has(c.id) && vaEnMomento(c, momento));
 
     /* ---------- Filtro por tipo de comida ---------- */
@@ -788,7 +830,7 @@ export async function renderMenu(container) {
     const selectTipo = el("select", { class: "select-tipo" });
     selectTipo.appendChild(el("option", { value: FILTRO_TODOS }, "Todas"));
     tiposComida
-      .filter((t) => nombreNormal(t.nombre) !== "desayuno")
+      .filter((t) => !esTipoDesayuno(t))
       .forEach((t) => selectTipo.appendChild(el("option", { value: String(t.id) }, t.nombre)));
     if (filaDesayuno) filtroTipoSlot = FILTRO_TODOS;
     selectTipo.value = filtroTipoSlot;
@@ -801,16 +843,16 @@ export async function renderMenu(container) {
       const filtradas =
         filtroTipoSlot === FILTRO_TODOS
           ? disponibles
-          : disponibles.filter((c) => String(c.tipo_comida_id) === filtroTipoSlot);
+          : disponibles.filter((c) => tiposDe(c).some((t) => String(t.id) === filtroTipoSlot));
 
       // Las comidas que no son repetibles y ya están en otro día/momento de
       // la semana se muestran igual, pero deshabilitadas y diciendo dónde
       // están, para que se entienda por qué no se pueden elegir.
-      const habilitadas = filtradas.filter((c) => !bloqueadaPorRepeticion(c));
+      const habilitadas = filtradas.filter((c) => !bloqueadaPorRepeticion(c, grupo));
 
       if (habilitadas.length === 0) {
         const texto =
-          filaDesayuno && !comidas.some(esDesayuno)
+          filaDesayuno && !comidas.some(esDeDesayuno)
             ? "No hay comidas de desayuno cargadas"
             : filtradas.length > 0 || disponibles.length === 0
               ? "Ya están todas agregadas"
@@ -819,8 +861,8 @@ export async function renderMenu(container) {
       }
       select.disabled = habilitadas.length === 0;
       filtradas.forEach((c) => {
-        const bloqueada = bloqueadaPorRepeticion(c);
-        const texto = bloqueada ? `${c.nombre} — ya está ${dondeEsta(c.id)[0]}` : c.nombre;
+        const bloqueada = bloqueadaPorRepeticion(c, grupo);
+        const texto = bloqueada ? `${c.nombre} — ya está ${dondeEsta(c.id, grupo)[0]}` : c.nombre;
         select.appendChild(
           el("option", bloqueada ? { value: String(c.id), disabled: true, class: "opcion-en-uso" } : { value: String(c.id) }, texto)
         );
@@ -856,10 +898,10 @@ export async function renderMenu(container) {
         // otra persona cargó esa misma comida en otro día.
         menu = await fetchMenuSemanal();
         const comida = comidas.find((c) => c.id === Number(select.value));
-        if (comida && bloqueadaPorRepeticion(comida)) {
+        if (comida && bloqueadaPorRepeticion(comida, grupo)) {
           showMensaje(
             mensajeBox,
-            `"${comida.nombre}" no es repetible y ya está en el menú ${dondeEsta(comida.id).join(", ")}. ` +
+            avisoNoRepetible(comida, grupo) + " " +
               `Si querés poder repetirla, prendé el ícono de repetir (flechas en círculo) en Configuración > Menú.`
           );
           pintar();

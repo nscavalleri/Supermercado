@@ -512,3 +512,74 @@ export function crearCampoFecha({ id } = {}) {
   const nodo = el("div", { class: "campo-fecha" }, [input, boton, nativo]);
   return { nodo, input, getISO, setISO };
 }
+
+/* ---------- Desplegable de selección múltiple ---------- */
+// Se ve como un combo: muestra lo elegido ("Principal, Desayuno") y al tocarlo
+// abre una lista con casillas para marcar uno o varios. Se cierra tocando
+// afuera o con Escape. Devuelve { nodo, getValores(), setValores(ids) }.
+// opciones: [{ valor, texto }]. vacio: texto cuando no hay nada marcado.
+export function crearMultiSelect({ opciones, valores = [], vacio = "Elegí...", titulo = "" }) {
+  const elegidos = new Set(valores.map(String));
+  const nodo = el("div", { class: "multiselect" });
+  const boton = el("button", {
+    type: "button",
+    class: "multiselect__boton",
+    "aria-haspopup": "listbox",
+    "aria-expanded": "false",
+    title: titulo || null,
+  });
+  const lista = el("div", { class: "multiselect__lista oculto", role: "listbox", "aria-multiselectable": "true" });
+  nodo.append(boton, lista);
+
+  function actualizarTexto() {
+    const textos = opciones.filter((o) => elegidos.has(String(o.valor))).map((o) => o.texto);
+    boton.textContent = textos.length > 0 ? textos.join(", ") : vacio;
+    boton.classList.toggle("multiselect__boton--vacio", textos.length === 0);
+  }
+
+  opciones.forEach((o) => {
+    const casilla = el("input", { type: "checkbox", value: String(o.valor) });
+    casilla.checked = elegidos.has(String(o.valor));
+    casilla.addEventListener("change", () => {
+      if (casilla.checked) elegidos.add(String(o.valor));
+      else elegidos.delete(String(o.valor));
+      actualizarTexto();
+    });
+    lista.appendChild(el("label", { class: "multiselect__opcion" }, [casilla, el("span", {}, o.texto)]));
+  });
+
+  const abrir = (abierto) => {
+    lista.classList.toggle("oculto", !abierto);
+    boton.setAttribute("aria-expanded", abierto ? "true" : "false");
+    nodo.classList.toggle("multiselect--abierto", abierto);
+  };
+  boton.addEventListener("click", () => abrir(lista.classList.contains("oculto")));
+  // Tocar afuera lo cierra. Si el desplegable ya no está en pantalla (se
+  // redibujó), el escuchador se da de baja solo.
+  const alTocarAfuera = (e) => {
+    if (!nodo.isConnected) return document.removeEventListener("pointerdown", alTocarAfuera);
+    if (!nodo.contains(e.target)) abrir(false);
+  };
+  document.addEventListener("pointerdown", alTocarAfuera);
+  nodo.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      abrir(false);
+      boton.focus();
+    }
+  });
+  if (opciones.length === 0) {
+    boton.disabled = true;
+  }
+  actualizarTexto();
+
+  return {
+    nodo,
+    getValores: () => opciones.filter((o) => elegidos.has(String(o.valor))).map((o) => o.valor),
+    setValores: (ids) => {
+      elegidos.clear();
+      ids.forEach((id) => elegidos.add(String(id)));
+      lista.querySelectorAll("input").forEach((c) => (c.checked = elegidos.has(c.value)));
+      actualizarTexto();
+    },
+  };
+}

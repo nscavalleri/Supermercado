@@ -9,6 +9,7 @@ import {
   botonIcono,
   botonIconoToggle,
   crearInputConAutocompletado,
+  crearMultiSelect,
   mismoNombre,
 } from "./ui.js";
 import {
@@ -59,29 +60,31 @@ export async function renderConfigMenu(container) {
     tiposComida = [];
   }
 
-  // Select con los tipos cargados en la base, sin opción "Sin tipo".
-  // Si no se pasa un tipo actual, queda elegido Principal (o el primero
-  // de la lista si ese tipo no estuviera cargado).
-  function crearSelectTipo(tipoComidaIdActual) {
-    const select = el("select", { class: "select-tipo" });
-
-    if (tiposComida.length === 0) {
-      select.appendChild(el("option", { value: "" }, "Sin tipos cargados"));
-      select.disabled = true;
-      return select;
-    }
-
-    tiposComida.forEach((tipo) => {
-      select.appendChild(el("option", { value: String(tipo.id) }, tipo.nombre));
+  // Desplegable con casillas: una comida puede tener varios tipos (ej.
+  // Desayuno y Principal). Si no se pasan tipos actuales, queda marcado
+  // Principal (o el primero de la lista si ese tipo no estuviera cargado).
+  function tipoPorDefecto() {
+    const tipo = tiposComida.find((t) => mismoNombre(t.nombre, TIPO_POR_DEFECTO)) || tiposComida[0];
+    return tipo ? [tipo.id] : [];
+  }
+  function crearSelectTipos(tipoIdsActuales) {
+    return crearMultiSelect({
+      opciones: tiposComida.map((t) => ({ valor: t.id, texto: t.nombre })),
+      valores: tipoIdsActuales && tipoIdsActuales.length > 0 ? tipoIdsActuales : tipoPorDefecto(),
+      vacio: tiposComida.length === 0 ? "Sin tipos cargados" : "Elegí el tipo",
+      titulo: "Tipo de comida (podés marcar más de uno)",
     });
-
-    const actual = tiposComida.find((t) => t.id === tipoComidaIdActual);
-    const porDefecto = tiposComida.find((t) => mismoNombre(t.nombre, TIPO_POR_DEFECTO)) || tiposComida[0];
-    select.value = String((actual || porDefecto).id);
-    return select;
+  }
+  // Tiene que tener al menos un tipo marcado (si hay tipos cargados).
+  function faltaTipo(tipoIds) {
+    if (tiposComida.length > 0 && tipoIds.length === 0) {
+      showMensaje(mensajeBox, "Marcá al menos un tipo de comida.", "info");
+      return true;
+    }
+    return false;
   }
 
-  const selectNuevoTipo = crearSelectTipo(null);
+  const selectNuevoTipo = crearSelectTipos(null);
   const TEXTOS_REPETIBLE = {
     si: "Repetible: puede estar más de una vez en el menú de la semana (tocá para cambiar)",
     no: "No repetible: solo puede estar una vez en el menú de la semana (tocá para cambiar)",
@@ -95,7 +98,7 @@ export async function renderConfigMenu(container) {
   const { nodo: formNueva, input: inputNueva } = crearInputConAutocompletado({
     placeholder: "Nombre de la comida (ej: Milanesa con puré)",
     textoBoton: "Agregar comida",
-    extras: [selectNuevoTipo, toggleNuevaRepetible],
+    extras: [selectNuevoTipo.nodo, toggleNuevaRepetible],
     getSugerencias: (texto) =>
       comidas.filter((c) => c.nombre.toLowerCase().includes(texto.toLowerCase())),
     onSubmit: (texto) => agregarComida(texto),
@@ -147,7 +150,7 @@ export async function renderConfigMenu(container) {
     const tipoSpan = el(
       "span",
       { class: "abm-lista__tipo" },
-      comida.tipo_comida ? comida.tipo_comida.nombre : "Sin tipo"
+      comida.tipos.length > 0 ? comida.tipos.map((t) => t.nombre).join(", ") : "Sin tipo"
     );
     const contador = el(
       "span",
@@ -203,13 +206,13 @@ export async function renderConfigMenu(container) {
 
     botonEditar.addEventListener("click", () => {
       const inputEdit = el("input", { type: "text", value: comida.nombre });
-      const selectEditTipo = crearSelectTipo(comida.tipo_comida_id);
+      const selectEditTipo = crearSelectTipos(comida.tipos.map((t) => t.id));
       const guardar = botonIcono("guardar");
       const cancelar = botonIcono("cancelar");
       clearNode(cabecera);
       cabecera.append(
         inputEdit,
-        selectEditTipo,
+        selectEditTipo.nodo,
         el("div", { class: "abm-lista__acciones" }, [guardar, cancelar])
       );
       inputEdit.focus();
@@ -222,9 +225,10 @@ export async function renderConfigMenu(container) {
           showMensaje(mensajeBox, `Ya existe una comida llamada "${nuevoNombre}".`, "info");
           return;
         }
-        const tipoElegido = selectEditTipo.value ? Number(selectEditTipo.value) : null;
+        const tiposElegidos = selectEditTipo.getValores();
+        if (faltaTipo(tiposElegidos)) return;
         try {
-          await actualizarComida(comida.id, nuevoNombre, tipoElegido);
+          await actualizarComida(comida.id, nuevoNombre, tiposElegidos);
           clearNode(mensajeBox);
           await cargar();
         } catch (err) {
@@ -239,7 +243,7 @@ export async function renderConfigMenu(container) {
         const productoIds = comida.ingredientes.map((i) => i.producto?.id).filter(Boolean);
         const copia = await duplicarComida(
           nombreParaCopia(comida.nombre),
-          comida.tipo_comida_id,
+          comida.tipos.map((t) => t.id),
           productoIds,
           !!comida.repetible
         );
@@ -363,9 +367,10 @@ export async function renderConfigMenu(container) {
       pintar();
       return;
     }
-    const tipoElegido = selectNuevoTipo.value ? Number(selectNuevoTipo.value) : null;
+    const tiposElegidos = selectNuevoTipo.getValores();
+    if (faltaTipo(tiposElegidos)) return;
     try {
-      const creada = await crearComida(nombre, tipoElegido, toggleNuevaRepetible.estaActivo());
+      const creada = await crearComida(nombre, tiposElegidos, toggleNuevaRepetible.estaActivo());
       clearNode(mensajeBox);
       inputNueva.value = "";
       toggleNuevaRepetible.marcar(false);

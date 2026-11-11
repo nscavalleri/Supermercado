@@ -304,53 +304,103 @@ export async function fetchTiposComida() {
     .select("id, nombre")
     .order("nombre", { ascending: true });
   if (error) throw error;
-  return data;
+  // Mismo orden en toda la app: Principal, Guarnición y después el resto alfabético.
+  return (data || []).sort((a, b) => {
+    const [ga, na] = claveTipoComida(a.nombre);
+    const [gb, nb] = claveTipoComida(b.nombre);
+    return ga - gb || na.localeCompare(nb, "es");
+  });
 }
 
 /* ---------- Comidas y sus ingredientes (Configuración > Menú) ---------- */
-// Cada comida es un plato con un tipo, y sus ingredientes son productos del catálogo.
+// Cada comida es un plato con uno o varios tipos (ej. Desayuno y Principal) y
+// sus ingredientes son productos del catálogo. Los tipos de cada comida están
+// en la tabla comida_tipos (comida_id, tipo_comida_id).
+
+// Se piden los tipos pasando por comida_tipos de forma explícita (y no
+// "tipos_comida" directo) para que Supabase no se confunda con la columna
+// vieja comidas.tipo_comida_id mientras siga existiendo.
+const SELECT_TIPOS = "comida_tipos(tipo:tipos_comida(id, nombre))";
+
+// Deja en comida.tipos la lista [{id, nombre}] ordenada (Principal,
+// Guarnición, después el resto alfabético) y saca el dato intermedio.
+function conTipos(comida) {
+  if (!comida) return comida;
+  const { comida_tipos, ...resto } = comida;
+  const tipos = (comida_tipos || []).map((ct) => ct.tipo).filter(Boolean);
+  tipos.sort((a, b) => {
+    const [ga, na] = claveTipoComida(a.nombre);
+    const [gb, nb] = claveTipoComida(b.nombre);
+    return ga - gb || na.localeCompare(nb, "es");
+  });
+  return { ...resto, tipos };
+}
 
 export async function fetchComidas() {
   const { data, error } = await supabase
     .from("comidas")
     .select(
-      "id, nombre, tipo_comida_id, repetible, tipo_comida:tipos_comida(id, nombre), ingredientes:comida_ingredientes(id, producto:productos(id, nombre))"
+      `id, nombre, repetible, ${SELECT_TIPOS}, ingredientes:comida_ingredientes(id, producto:productos(id, nombre))`
     )
     .order("nombre", { ascending: true });
   if (error) throw error;
   // Los ingredientes vienen en el orden que los devuelve la base: acá los
   // dejamos alfabéticos para que la pantalla sea previsible.
   return (data || []).map((comida) => ({
-    ...comida,
+    ...conTipos(comida),
     ingredientes: (comida.ingredientes || []).sort((a, b) =>
       (a.producto?.nombre || "").localeCompare(b.producto?.nombre || "", "es", { sensitivity: "base" })
     ),
   }));
 }
 
+// Deja a la comida exactamente con estos tipos: agrega los que faltan y
+// borra los que sobran (primero agrega, así nunca queda sin ninguno).
+export async function guardarTiposComida(comidaId, tipoIds) {
+  const { data, error } = await supabase.from("comida_tipos").select("tipo_comida_id").eq("comida_id", comidaId);
+  if (error) throw error;
+  const actuales = new Set((data || []).map((f) => f.tipo_comida_id));
+  const nuevos = new Set(tipoIds);
+  const agregar = [...nuevos].filter((id) => !actuales.has(id));
+  const quitar = [...actuales].filter((id) => !nuevos.has(id));
+  if (agregar.length > 0) {
+    const { error: e1 } = await supabase
+      .from("comida_tipos")
+      .insert(agregar.map((id) => ({ comida_id: comidaId, tipo_comida_id: id })));
+    if (e1 && e1.code !== "23505") throw e1;
+  }
+  for (const id of quitar) {
+    const { error: e2 } = await supabase
+      .from("comida_tipos")
+      .delete()
+      .eq("comida_id", comidaId)
+      .eq("tipo_comida_id", id);
+    if (e2) throw e2;
+  }
+}
+
 // repetible: si la comida puede estar más de una vez en el menú de la semana
-// (columna comidas.repetible, por defecto false).
-export async function crearComida(nombre, tipoComidaId = null, repetible = false) {
+// (columna comidas.repetible, por defecto false). tipoIds: lista de ids de tipos_comida.
+export async function crearComida(nombre, tipoIds = [], repetible = false) {
   const { data, error } = await supabase
     .from("comidas")
-    .insert({ nombre: nombre.trim(), tipo_comida_id: tipoComidaId, repetible })
-    .select("id, nombre, tipo_comida_id, repetible")
+    .insert({ nombre: nombre.trim(), repetible })
+    .select("id, nombre, repetible")
     .single();
   if (error) throw error;
+  if (tipoIds.length > 0) await guardarTiposComida(data.id, tipoIds);
   return data;
 }
 
-export async function actualizarComida(id, nombre, tipoComidaId = null) {
-  const { error } = await supabase
-    .from("comidas")
-    .update({ nombre: nombre.trim(), tipo_comida_id: tipoComidaId })
-    .eq("id", id);
+export async function actualizarComida(id, nombre, tipoIds = []) {
+  const { error } = await supabase.from("comidas").update({ nombre: nombre.trim() }).eq("id", id);
   if (error) throw error;
+  await guardarTiposComida(id, tipoIds);
 }
 
-// Crea una comida nueva copiando el tipo, si es repetible y los ingredientes de otra.
-export async function duplicarComida(nombre, tipoComidaId, productoIds, repetible = false) {
-  const creada = await crearComida(nombre, tipoComidaId, repetible);
+// Crea una comida nueva copiando los tipos, si es repetible y los ingredientes de otra.
+export async function duplicarComida(nombre, tipoIds, productoIds, repetible = false) {
+  const creada = await crearComida(nombre, tipoIds, repetible);
   if (productoIds.length > 0) {
     const { error } = await supabase
       .from("comida_ingredientes")
@@ -389,11 +439,11 @@ export async function fetchMenuSemanal() {
   const { data, error } = await supabase
     .from("menu_semanal")
     .select(
-      "id, dia_id, momento_id, comida:comidas(id, nombre, tipo_comida:tipos_comida(id, nombre), ingredientes:comida_ingredientes(id, producto:productos(id, nombre)))"
+      `id, dia_id, momento_id, comida:comidas(id, nombre, repetible, ${SELECT_TIPOS}, ingredientes:comida_ingredientes(id, producto:productos(id, nombre)))`
     )
     .order("id", { ascending: true });
   if (error) throw error;
-  return data;
+  return (data || []).map((item) => ({ ...item, comida: conTipos(item.comida) }));
 }
 
 export async function agregarComidaAlMenu(diaId, momentoId, comidaId) {
@@ -548,16 +598,25 @@ export async function agregarProductosALista(productoIds, destino) {
 // tipo, en el orden en que se cargaron. Lo usan las dos versiones del Menú.
 const ORDEN_TIPOS_COMIDA = ["principal", "guarnicion"];
 
+// Posición de un tipo de comida en ese orden: [grupo, nombre para desempatar].
+function claveTipoComida(nombreTipo) {
+  const nombre = (nombreTipo || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+  if (!nombre) return [3, ""];
+  const i = ORDEN_TIPOS_COMIDA.indexOf(nombre);
+  return i >= 0 ? [i, ""] : [2, nombre];
+}
+
+// Una comida con varios tipos se ordena por el que va primero (ej. una que es
+// Desayuno y Principal se ordena como Principal).
 export function ordenarPorTipoComida(items) {
   const clave = (item) => {
-    const nombre = (item.comida?.tipo_comida?.nombre || "")
-      .trim()
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
-    if (!nombre) return [3, ""];
-    const i = ORDEN_TIPOS_COMIDA.indexOf(nombre);
-    return i >= 0 ? [i, ""] : [2, nombre];
+    const tipos = item.comida?.tipos || [];
+    if (tipos.length === 0) return [3, ""];
+    return tipos.map((t) => claveTipoComida(t.nombre)).sort((a, b) => a[0] - b[0] || a[1].localeCompare(b[1], "es"))[0];
   };
   return [...items].sort((a, b) => {
     const [ga, na] = clave(a);
