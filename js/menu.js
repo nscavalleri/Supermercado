@@ -105,6 +105,33 @@ export async function renderMenu(container) {
     return !comida.repetible && menu.some((m) => m.comida?.id === comida.id);
   }
 
+  /* ---------- Desayuno ---------- */
+  // La fila "Desayuno" (momento) solo lleva comidas de tipo "Desayuno", y
+  // Almuerzo / Cena llevan todo lo demás. Se reconocen por el nombre, sin
+  // importar mayúsculas ni tildes.
+  function nombreNormal(texto) {
+    return (texto || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+  }
+  function esDesayuno(comida) {
+    return nombreNormal(comida?.tipo_comida?.nombre) === "desayuno";
+  }
+  function esMomentoDesayuno(momento) {
+    return nombreNormal(momento?.nombre) === "desayuno";
+  }
+  // ¿Esta comida puede ir en este momento?
+  function vaEnMomento(comida, momento) {
+    return esDesayuno(comida) === esMomentoDesayuno(momento);
+  }
+  function avisoMomentoEquivocado(comida, momento) {
+    return esDesayuno(comida)
+      ? `"${comida.nombre}" es de desayuno: solo se puede poner en la fila Desayuno.`
+      : `"${comida.nombre}" no es de desayuno: no se puede poner en la fila ${momento?.nombre || "Desayuno"}.`;
+  }
+
   try {
     [dias, momentos, menu, comidas, tiposComida, supermercados] = await Promise.all([
       fetchDiasSemana(),
@@ -114,6 +141,8 @@ export async function renderMenu(container) {
       fetchTiposComida(),
       fetchSupermercados(),
     ]);
+    // Desayuno siempre primero (antes de Almuerzo), aunque en la base tenga otro orden.
+    momentos = [...momentos.filter(esMomentoDesayuno), ...momentos.filter((m) => !esMomentoDesayuno(m))];
   } catch (err) {
     clearNode(contenido);
     showMensaje(mensajeBox, "No se pudo cargar el menú: " + err.message);
@@ -450,6 +479,11 @@ export async function renderMenu(container) {
   async function moverAlSoltar(item, diaId, momentoId) {
     if (diaId === item.dia_id && momentoId === item.momento_id) return; // mismo lugar
     const nombre = item.comida ? item.comida.nombre : "La comida";
+    const momentoDestino = momentos.find((m) => m.id === momentoId);
+    if (item.comida && !vaEnMomento(item.comida, momentoDestino)) {
+      showMensaje(mensajeBox, avisoMomentoEquivocado(item.comida, momentoDestino), "info");
+      return;
+    }
     // Si en el destino ya está esa misma comida, no se mueve (quedaría repetida
     // en el mismo día y momento). Se chequea acá porque la base puede no tener
     // una regla que lo impida.
@@ -476,6 +510,11 @@ export async function renderMenu(container) {
 
   // Agregar a la tabla una comida arrastrada desde "Más opciones".
   async function agregarAlSoltar(comida, diaId, momentoId) {
+    const momentoDestino = momentos.find((m) => m.id === momentoId);
+    if (!vaEnMomento(comida, momentoDestino)) {
+      showMensaje(mensajeBox, avisoMomentoEquivocado(comida, momentoDestino), "info");
+      return;
+    }
     try {
       // Se relee el menú por si la otra persona cambió algo mientras tanto.
       menu = await fetchMenuSemanal();
@@ -501,41 +540,49 @@ export async function renderMenu(container) {
     }
   }
 
-  /* ---------- "Más opciones": platos principales disponibles para arrastrar ---------- */
-  // Desplegable arriba de la tabla con los platos PRINCIPALES (no guarniciones)
-  // que se pueden poner: los repetibles, y los no repetibles que todavía no
-  // están en la semana. Como se vuelve a calcular cada vez que se dibuja, si se
-  // quita de la tabla un no repetible, vuelve a aparecer acá.
-  let opcionesAbiertas = false; // se recuerda abierto/cerrado al redibujar
-
-  function esPrincipal(comida) {
-    const nombre = (comida.tipo_comida?.nombre || "")
-      .trim()
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[̀-ͯ]/g, "");
-    return nombre === "principal";
-  }
+  /* ---------- "Más opciones": comidas disponibles para arrastrar ---------- */
+  // Dos desplegables arriba de la tabla:
+  //  - "Más opciones de comidas": todo lo que NO es desayuno (para Almuerzo y Cena).
+  //  - "Más opciones de desayuno": todo lo que es desayuno (para la fila Desayuno).
+  // En cada uno aparecen los repetibles y los no repetibles que todavía no están
+  // en la semana. Como se calcula cada vez que se dibuja, si se quita de la tabla
+  // un no repetible, vuelve a aparecer acá.
+  const opcionesAbiertas = { comidas: false, desayuno: false }; // se recuerda al redibujar
 
   function renderMasOpciones() {
+    return el("div", { class: "menuB-opciones-grupo" }, [
+      renderSeccionOpciones(
+        "comidas",
+        "Más opciones de comidas",
+        (c) => !esDesayuno(c),
+        "No quedan comidas disponibles para esta semana."
+      ),
+      renderSeccionOpciones(
+        "desayuno",
+        "Más opciones de desayuno",
+        (c) => esDesayuno(c),
+        "No quedan desayunos disponibles para esta semana."
+      ),
+    ]);
+  }
+
+  function renderSeccionOpciones(clave, titulo, filtro, textoVacio) {
     const disponibles = comidas
-      .filter((c) => esPrincipal(c) && !bloqueadaPorRepeticion(c))
+      .filter((c) => filtro(c) && !bloqueadaPorRepeticion(c))
       .sort((a, b) => a.nombre.localeCompare(b.nombre, "es", { sensitivity: "base" }));
 
-    const detalles = el("details", { class: "menuB-opciones" });
-    detalles.open = opcionesAbiertas;
-    detalles.addEventListener("toggle", () => (opcionesAbiertas = detalles.open));
+    const detalles = el("details", { class: "menuB-opciones", "data-seccion": clave });
+    detalles.open = opcionesAbiertas[clave];
+    detalles.addEventListener("toggle", () => (opcionesAbiertas[clave] = detalles.open));
     detalles.appendChild(
       el("summary", { class: "menuB-opciones__titulo" }, [
-        "Más opciones",
+        titulo,
         el("span", { class: "menuB-opciones__cantidad" }, ` (${disponibles.length})`),
       ])
     );
 
     if (disponibles.length === 0) {
-      detalles.appendChild(
-        el("p", { class: "texto-ayuda menuB-opciones__vacio" }, "No quedan platos principales disponibles para esta semana.")
-      );
+      detalles.appendChild(el("p", { class: "texto-ayuda menuB-opciones__vacio" }, textoVacio));
       return detalles;
     }
     const lista = el("div", { class: "menuB-opciones__lista" });
@@ -728,15 +775,24 @@ export async function renderMenu(container) {
     const yaEnEsteSlot = new Set(
       menu.filter((m) => m.dia_id === dia.id && m.momento_id === momento.id).map((m) => m.comida?.id)
     );
-    const disponibles = comidas.filter((c) => !yaEnEsteSlot.has(c.id));
+    // En la fila Desayuno solo se ofrecen comidas de tipo Desayuno; en las
+    // demás filas, todo menos los desayunos.
+    const filaDesayuno = esMomentoDesayuno(momento);
+    const disponibles = comidas.filter((c) => !yaEnEsteSlot.has(c.id) && vaEnMomento(c, momento));
 
     /* ---------- Filtro por tipo de comida ---------- */
     // Primero se elige el tipo (Principal, Guarnición...) y el segundo
     // desplegable queda con las comidas de ese tipo.
+    // En Desayuno no hace falta elegir tipo (son todas de desayuno), así que
+    // ese filtro no se muestra. En Almuerzo/Cena el tipo Desayuno no aparece.
     const selectTipo = el("select", { class: "select-tipo" });
     selectTipo.appendChild(el("option", { value: FILTRO_TODOS }, "Todas"));
-    tiposComida.forEach((t) => selectTipo.appendChild(el("option", { value: String(t.id) }, t.nombre)));
+    tiposComida
+      .filter((t) => nombreNormal(t.nombre) !== "desayuno")
+      .forEach((t) => selectTipo.appendChild(el("option", { value: String(t.id) }, t.nombre)));
+    if (filaDesayuno) filtroTipoSlot = FILTRO_TODOS;
     selectTipo.value = filtroTipoSlot;
+    if (selectTipo.value !== filtroTipoSlot) filtroTipoSlot = selectTipo.value = FILTRO_TODOS;
 
     const select = el("select", { class: "select-tipo" });
 
@@ -754,9 +810,11 @@ export async function renderMenu(container) {
 
       if (habilitadas.length === 0) {
         const texto =
-          filtradas.length > 0 || disponibles.length === 0
-            ? "Ya están todas agregadas"
-            : "No hay comidas de ese tipo";
+          filaDesayuno && !comidas.some(esDesayuno)
+            ? "No hay comidas de desayuno cargadas"
+            : filtradas.length > 0 || disponibles.length === 0
+              ? "Ya están todas agregadas"
+              : "No hay comidas de ese tipo";
         select.appendChild(el("option", { value: "" }, texto));
       }
       select.disabled = habilitadas.length === 0;
@@ -822,7 +880,7 @@ export async function renderMenu(container) {
     });
 
     return el("div", { class: "form-filtro" }, [
-      selectTipo,
+      filaDesayuno ? null : selectTipo,
       select,
       el("div", { class: "abm-lista__acciones" }, [aceptar, cancelar]),
     ]);
